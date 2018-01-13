@@ -6,7 +6,6 @@ import json
 import datetime
 from flask import Flask, jsonify, make_response
 from flask_sqlalchemy import SQLAlchemy
-import settings
 from flask_cors import CORS
 
 app = Flask(__name__)
@@ -51,7 +50,7 @@ def cyclistdata():
 
 
 if __name__ == "__main__":
-    application.run(host='0.0.0.0')
+    app.run(host='0.0.0.0')
 
 
 class Data(db.Model):
