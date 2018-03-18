@@ -1,18 +1,33 @@
 
 #!flask/bin/python
-"""Handler for jyps-api 
+"""Handler for jyps-api
 """
 import json
 import datetime
-from flask import Flask, jsonify, make_response
+from flask import Flask, jsonify, make_response, request, abort
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
+import requests
+import simplejson
+from requests.auth import HTTPBasicAuth
+from decimal import *
+from functools import wraps
+
+from flask_jwt_simple import (
+    JWTManager, jwt_required, create_jwt, get_jwt_identity
+)
+from flask_migrate import Migrate
 
 app = Flask(__name__)
 CORS(app)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://somefunnystuff@localhost/jypsdata'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://jypsdata:jypsdata123@localhost/jypsdata'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
+
+# Setup the Flask-JWT-Simple extension
+app.config['JWT_SECRET_KEY'] = 'GENERATEDKEYFROMSYSTEM'  # Change this!
+jwt = JWTManager(app)
 
 
 def dateconvert(o):
@@ -26,6 +41,39 @@ def dateconvert(o):
     """
     if isinstance(o, datetime.date):
         return o.__str__()
+
+
+def require_appkey(view_function):
+    @wraps(view_function)
+    # the new, post-decoration function. Note *args and **kwargs here.
+    def decorated_function(*args, **kwargs):
+        if request.args.get('key') and request.args.get('key') == "APIKEY":
+            return view_function(*args, **kwargs)
+        else:
+            abort(401)
+    return decorated_function
+
+
+@app.route('/api/events/v1/login', methods=['POST'])
+def login():
+    if not request.is_json:
+        return jsonify({"msg": "Missing JSON in request"}), 400
+
+    params = request.get_json()
+    username = params.get('username', None)
+    password = params.get('password', None)
+
+    if not username:
+        return jsonify({"msg": "Missing username parameter"}), 400
+    if not password:
+        return jsonify({"msg": "Missing password parameter"}), 400
+
+    if username != 'jyps' or password != 'jyps123':
+        return jsonify({"msg": "Bad username or password"}), 401
+
+    # Identity can be any data that is json serializable
+    ret = {'jwt': create_jwt(identity=username)}
+    return jsonify(ret), 200
 
 
 @app.route("/api/data/v1/cyclistdata", methods=['GET'])
@@ -49,8 +97,303 @@ def cyclistdata():
     return response
 
 
+@app.route("/api/data/v1/events/allevents", methods=['GET'])
+def allevents():
+    """Get all event data
+
+    Decorators:
+        app
+
+    Returns:
+        json -- json array of object(s) containing all events
+    """
+    res = Event.query.all()
+    x = []
+    for item in res:
+        x.append({"id": item.id,
+                  "location": item.location,
+                  "date": item.date,
+                  "name": item.name,
+                  "googlemaps_link": item.googlemaps_link})
+    data = json.dumps([dict(y) for y in x], default=dateconvert)
+    response = make_response(data)
+    response.headers['Content-Type'] = 'application/json'
+    return response
+
+
+@app.route("/api/data/v1/events/<int:id>", methods=['GET'])
+def oneevent(id):
+    """Get event data
+
+    Decorators:
+        app
+
+    Returns:
+        json -- json object of one event
+    """
+    event = Event.query.get(id)
+    groups = []
+    for group in event.groups:
+        groups.append({"id": group.id, "name": group.name, "distance": simplejson.dumps(Decimal(group.distance)),
+                       "price_prepay": simplejson.dumps(Decimal(group.price_prepay)), "price": simplejson.dumps(Decimal(group.price)), "product_code": group.product_code, "number_prefix": group.number_prefix, "tagrange_start": group.tagrange_start, "tagrange_end": group.tagrange_end, "current_tag": group.current_tag})
+    response = ({"id": event.id, "location": event.location,
+                 "general_description": event.general_description, "date": event.date, "payment_description": event.payment_description,
+                 "groups_description": event.groups_description, "name": event.name, "groups": groups})
+    data = json.dumps(response,  default=dateconvert)
+    r = make_response(data)
+    r.headers['Content-Type'] = 'application/json'
+    return r
+
+
+@app.route("/api/data/v1/events/auth/createevent", methods=['POST'])
+def createevent():
+    """Create new event
+
+    Decorators:
+        app
+
+    Returns:
+        String -- OK or Error description
+    """
+    request_data = request.json
+    event = Event(name=request_data["name"], location=request_data["location"], date=request_data["date"], general_description=request_data["description"],
+                  groups_description=request_data["groupsDescription"], googlemaps_link=request_data[
+                      "googlemaps_link"], paytrail_product=request_data["paytrail_product"],
+                  email_template=request_data["email_template"])
+    for item in request_data["groups"]:
+        group = Group(name=item["name"], distance=item["distance"],
+                      price_prepay=item["price_prepay"], price=item["price"], product_code=item[
+            "product_code"], number_prefix=item["number_prefix"],
+            tagrange_start=item["tagrange_start"], tagrange_end=item["tagrange_end"])
+        event.groups.append(group)
+
+    db.session.add(event)
+    db.session.commit()
+    response = make_response("Event created", 200)
+    return response
+
+
+@app.route("/api/data/v1/events/auth/deleteevent", methods=['DELETE'])
+def deleteevent():
+    """Delete event
+
+    Decorators:
+        app
+
+    Returns:
+        String -- Delete one event
+    """
+    request_data = request.json
+    event = Event.query.get(request_data["id"])
+    db.session.delete(event)
+    db.session.commit()
+    response = make_response("Event deleted", 200)
+    return response
+
+
+@app.route("/api/data/v1/events/addparticipant", methods=['POST'])
+def addparticipant():
+    """Add participant
+
+    Decorators:
+        app
+
+    Returns:
+        String -- Return code, + url for paytrail if paytrail payment is selected
+    """
+    request_data = request.json
+    group = Group.query.get(request_data["groupid"])
+    participant = Participant(firstname=request_data["firstname"], lastname=request_data["lastname"], telephone=request_data["telephone"], email=request_data["email"],
+                              zipcode=request_data["zip"], club=request_data["club"], streetaddress=request_data[
+        "streetaddress"], group_id=request_data["groupid"],
+        public=request_data["public"], payment_type=request_data["paymentmethod"])
+    db.session.add(participant)
+    db.session.commit()
+    group = Group.query.get(participant.group_id)
+    event = Event.query.get(group.event_id)
+    # if payment is to paytrail
+    if participant.payment_type == 1:
+        paytrail_json = {
+            "orderNumber": participant.id,
+            "currency": "EUR",
+            "locale": "fi_FI",
+            "urlSet": {
+                "success": "https://www.esimerkkikauppa.fi/sv/success",
+                "failure": "https://www.esimerkkikauppa.fi/sv/failure",
+                "pending": "",
+                "notification": "https://www.esimerkkikauppa.fi/sv/success"
+            },
+            "orderDetails": {
+                "includeVat": "1",
+                "contact": {
+                    "telephone": participant.telephone,
+                    "mobile": participant.telephone,
+                    "email": participant.email,
+                    "firstName": participant.firstname,
+                    "lastName": participant.lastname,
+                    "companyName": "",
+                    "address": {
+                        "street": participant.streetaddress,
+                        "postalCode": participant.zipcode,
+                        "postalOffice": "Jyvaskyla",
+                        "country": "FI"
+                    }
+                },
+                "products": [
+                    {
+                        "title": group.name,
+                        "code": event.paytrail_product,
+                        "amount": 1,
+                        "price": simplejson.dumps(Decimal(group.price_prepay), use_decimal=True),
+                        "vat": "24.00",
+                        "discount": "0.00",
+                        "type": "1"
+                    }
+                ]
+            }
+        }
+        paytrail_response = requests.post(
+            "https://payment.paytrail.com/api-payment/create",
+            headers={'X-Verkkomaksut-Api-Version': '1'},
+            auth=HTTPBasicAuth('13466', '6pKF4jkv97zmqBJ3ZL8gUw5DfT2NMQ'),
+            json=paytrail_json)
+        response = make_response(json.dumps(paytrail_response.json()), 200)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+
+    response = make_response("Participant added", 200)
+    return response
+
+
+@app.route("/api/data/v1/events/auth/deleteparticipant", methods=['DELETE'])
+def deleteparticipant():
+    """Delete participant
+
+    Decorators:
+        app
+
+    Returns:
+        String -- Delete one Participant
+    """
+    request_data = request.json
+    participant = Participant.query.get(request_data["id"])
+    db.session.delete(participant)
+    db.session.commit()
+    response = make_response("Participant deleted", 200)
+    return response
+
+
+@app.route("/api/data/v1/events/<int:id>/participants", methods=['GET'])
+def eventparticipants(id):
+    """Get participants of event
+
+    Decorators:
+        app
+
+    Returns:
+        json -- json object of events participants
+    """
+    try:
+        event = Event.query.get(id)
+        participants = []
+        for group in event.groups:
+            for participant in group.participants:
+                participants.append({"id": participant.id, "firstname": participant.firstname,
+                                     "lastname": participant.lastname, "group": group.name, "club": participant.club, "number": participant.number, "payment_confirmed": participant.payment_confirmed})
+
+        data = json.dumps(participants,  default=dateconvert)
+        r = make_response(data)
+        r.headers['Content-Type'] = 'application/json'
+        return r
+    except AttributeError:
+        return make_response("No participants found", 503)
+
+
+@app.route("/api/data/v1/events/paymentconfirm", methods=['POST'])
+def paymentconfirm():
+    """Return from succesfull payment + notification url
+
+    Decorators:
+        app
+
+    Returns:
+        json -- json object of events participants
+    """
+
+
+@app.route("/api/data/v1/events/paymentcancel", methods=['POST'])
+def paymmentcancel():
+    """Return from cancelled payment
+
+    Decorators:
+        app
+
+    Returns:
+        json -- json object of events participants
+    """
+
+
+@app.route("/api/data/v1/events/auth/settings", methods=['GET'])
+def allsettings():
+    """Get all settings
+
+    Decorators:
+        app
+
+    Returns:
+        json -- json array of object(s) containing all events
+    """
+    res = Settings.query.all()
+    x = []
+    for item in res:
+        x.append({"id": item.id,
+                  "key": item.location,
+                  "value": item.date})
+    data = json.dumps([dict(y) for y in x], default=dateconvert)
+    response = make_response(data)
+    response.headers['Content-Type'] = 'application/json'
+    return response
+
+
+@app.route("/api/data/v1/events/auth/settings/add", methods=['POST'])
+def addsettings():
+    """Add setting
+
+    Decorators:
+        app
+
+    Returns:
+        String -- Return code
+    """
+    request_data = request.json
+    settings = Participant(
+        key=request_data["key"], value=request_data["value"])
+    db.session.add(settings)
+    db.session.commit()
+    response = make_response("Setting added", 200)
+    return response
+
+
+@app.route("/api/data/v1/events/auth/settings/<int:id>/update", methods=['PUT'])
+def updatesettings():
+    """update setting
+
+    Decorators:
+        app
+
+    Returns:
+        String -- Return code
+    """
+    request_data = request.json
+    setting = Settings.query.get(id)
+    setting.value = request_data["value"]
+    db.session.commit()
+    response = make_response("Setting updated", 200)
+    return response
+
+
 if __name__ == "__main__":
-    app.run(host='0.0.0.0')
+    app.run(host='0.0.0.0', threaded=True)
 
 
 class Data(db.Model):
@@ -60,3 +403,79 @@ class Data(db.Model):
     location = db.Column(db.String(80), nullable=True)
     date = db.Column(db.Date, nullable=True)
     qty = db.Column(db.Integer, nullable=True)
+
+
+class Event(db.Model):
+    """ORM object for data
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(80), nullable=True)
+    location = db.Column(db.String(80), nullable=True)
+    date = db.Column(db.Date, nullable=True)
+    general_description = db.Column(db.String(80), nullable=True)
+    payment_description = db.Column(db.String(80), nullable=True)
+    groups_description = db.Column(db.String(80), nullable=True)
+    googlemaps_link = db.Column(db.String(250), nullable=True)
+    paytrail_product = db.Column(db.String(11), nullable=True)
+    email_template = db.Column(db.String(250), nullable=True)
+    groups = db.relationship('Group', backref='event',
+                             cascade="all, delete, delete-orphan")
+
+
+class Group(db.Model):
+    """ORM object for data
+    """
+    __tablename__ = "event_group"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(80), nullable=True)
+    distance = db.Column(db.Numeric, nullable=True)
+    price_prepay = db.Column(db.Numeric, nullable=True)
+    price = db.Column(db.Numeric, nullable=True)
+    product_code = db.Column(db.String(80), nullable=True)
+    number_prefix = db.Column(db.String(80), nullable=True)
+    tagrange_start = db.Column(db.Integer, nullable=True)
+    tagrange_end = db.Column(db.Integer, nullable=True)
+    current_tag = db.Column(db.Integer, nullable=True)
+    event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
+    participants = db.relationship('Participant', backref='event_group',
+                                   cascade="all, delete, delete-orphan")
+
+
+class Participant(db.Model):
+    """ORM object for data
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    firstname = db.Column(db.String(80), nullable=True)
+    lastname = db.Column(db.String(80), nullable=True)
+    streetaddress = db.Column(db.String(80), nullable=True)
+    zipcode = db.Column(db.String(80), nullable=True)
+    city = db.Column(db.String(80), nullable=True)
+    telephone = db.Column(db.String(80), nullable=True)
+    email = db.Column(db.String(80), nullable=True)
+    club = db.Column(db.String(80), nullable=True)
+    payment_type = db.Column(db.Integer, nullable=True)
+    payment_confirmed = db.Column(db.Boolean, nullable=True)
+    memo = db.Column(db.String(250), nullable=True)
+    public = db.Column(db.Boolean, nullable=True)
+    tagnumber = db.Column(db.String(80), nullable=True)
+    number = db.Column(db.String(80), nullable=True)
+    group_id = db.Column(db.Integer, db.ForeignKey(
+        'event_group.id'), nullable=False)
+
+
+class Settings(db.Model):
+    """ORM object for data
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(80), nullable=True)
+    value = db.Column(db.String(80), nullable=True)
+
+
+class User(db.Model):
+    """ORM object for data
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), nullable=True)
+    password = db.Column(db.String(80), nullable=True)
+    email = db.Column(db.String(80), nullable=True)
+    realname = db.Column(db.String(80), nullable=True)

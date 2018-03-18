@@ -17,7 +17,7 @@ LOCATIONS = ['Kinakujan silta', 'JK-1', 'PP-1', 'Matkakeskus', 'Satama',
              'JK-2', 'PP-2', 'Tourula', 'JK-3', 'PP-3', 'Vaajakoskentie_Jyska']
 for line in CSVFILE:
     print("=======")
-    d = datetime.datetime.strptime(line[0], '%M/%d/%Y').date().isoformat()
+    d = datetime.datetime.strptime(line[0], '%d/%m/%Y').date().isoformat()
     count = 2
     for location in LOCATIONS:
         print(line[0])
