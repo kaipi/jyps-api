@@ -17,16 +17,19 @@ from flask_jwt_simple import (
     JWTManager, jwt_required, create_jwt, get_jwt_identity
 )
 from flask_migrate import Migrate
-
+from flask_sendmail import Mail
+from flask_sendmail import Message
+import bcrypt
 app = Flask(__name__)
 CORS(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://jypsdata:jypsdata123@localhost/jypsdata'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+mail = Mail(app)
 
 # Setup the Flask-JWT-Simple extension
-app.config['JWT_SECRET_KEY'] = 'GENERATEDKEYFROMSYSTEM'  # Change this!
+app.config['JWT_SECRET_KEY'] = "SUPERSECRET"  # Change this!
 jwt = JWTManager(app)
 
 
@@ -47,7 +50,7 @@ def require_appkey(view_function):
     @wraps(view_function)
     # the new, post-decoration function. Note *args and **kwargs here.
     def decorated_function(*args, **kwargs):
-        if request.args.get('key') and request.args.get('key') == "APIKEY":
+        if request.args.get('key') and request.args.get('key') == getSetting("apikey"):
             return view_function(*args, **kwargs)
         else:
             abort(401)
@@ -67,13 +70,12 @@ def login():
         return jsonify({"msg": "Missing username parameter"}), 400
     if not password:
         return jsonify({"msg": "Missing password parameter"}), 400
-
-    if username != 'jyps' or password != 'jyps123':
+    user = User.query.filter_by(username=username).first()
+    if bcrypt.checkpw(password.encode("utf8"), user.password.encode("utf8")):
+        ret = {'jwt': create_jwt(identity=username)}
+        return jsonify(ret), 200
+    else:
         return jsonify({"msg": "Bad username or password"}), 401
-
-    # Identity can be any data that is json serializable
-    ret = {'jwt': create_jwt(identity=username)}
-    return jsonify(ret), 200
 
 
 @app.route("/api/data/v1/cyclistdata", methods=['GET'])
@@ -162,9 +164,11 @@ def createevent():
                   email_template=request_data["email_template"])
     for item in request_data["groups"]:
         group = Group(name=item["name"], distance=item["distance"],
-                      price_prepay=item["price_prepay"], price=item["price"], product_code=item[
-            "product_code"], number_prefix=item["number_prefix"],
-            tagrange_start=item["tagrange_start"], tagrange_end=item["tagrange_end"])
+                      price_prepay=Decimal(item["price_prepay"]), price=Decimal(item["price"]), product_code=item["product_code"],
+                      number_prefix=item["number_prefix"], tagrange_start=int(
+                          item["tagrange_start"]),
+                      tagrange_end=int(item["tagrange_end"]), current_tag=int(item["tagrange_start"]), current_racenumber=int(item["racenumberrange_start"]),
+                      racenumberrange_end=int(item["racenumberrange_end"]), racenumberrange_start=int(item["racenumberrange_start"]))
         event.groups.append(group)
 
     db.session.add(event)
@@ -203,10 +207,15 @@ def addparticipant():
     """
     request_data = request.json
     group = Group.query.get(request_data["groupid"])
+    racenumber = group.number_prefix + str(group.current_racenumber)
+    racetagnumber = group.current_tag
+    group.current_tag = group.current_tag + 1
+    group.current_racenumber = group.current_racenumber + 1
+    db.session.commit()
     participant = Participant(firstname=request_data["firstname"], lastname=request_data["lastname"], telephone=request_data["telephone"], email=request_data["email"],
                               zipcode=request_data["zip"], club=request_data["club"], streetaddress=request_data[
         "streetaddress"], group_id=request_data["groupid"],
-        public=request_data["public"], payment_type=request_data["paymentmethod"])
+        number=racenumber, tagnumber=racetagnumber, public=request_data["public"], payment_type=request_data["paymentmethod"])
     db.session.add(participant)
     db.session.commit()
     group = Group.query.get(participant.group_id)
@@ -259,9 +268,21 @@ def addparticipant():
             json=paytrail_json)
         response = make_response(json.dumps(paytrail_response.json()), 200)
         response.headers['Content-Type'] = 'application/json'
+        email = Message("Ilmoittautumisesi tapahtumaan",
+                        sender=("JYPS Ilmoittautumiset",
+                                "ilmoittatumiset@jyps.fi"),
+                        recipients=[participant.email])
+        email.body = event.email_template + "Ilmoittautumis tietosi: "
+        mail.send(email)
         return response
-
-    response = make_response("Participant added", 200)
+    email = Message("Ilmoittautumisesi tapahtumaan",
+                    sender=("JYPS Ilmoittautumiset",
+                            "ilmoittatumiset@jyps.fi"),
+                    recipients=[participant.email])
+    email.body = event.email_template + "Ilmoittautumis tietosi:"
+    mail.send(email)
+    response = make_response(json.dumps(
+        {"msg": "Added ok", "type": "normal"}), 200)
     return response
 
 
@@ -298,8 +319,10 @@ def eventparticipants(id):
         participants = []
         for group in event.groups:
             for participant in group.participants:
-                participants.append({"id": participant.id, "firstname": participant.firstname,
-                                     "lastname": participant.lastname, "group": group.name, "club": participant.club, "number": participant.number, "payment_confirmed": participant.payment_confirmed})
+                if participant.public == True:
+                    participants.append({"id": participant.id, "firstname": participant.firstname,
+                                         "lastname": participant.lastname, "group": group.name, "club": participant.club,
+                                         "number": participant.number, "payment_confirmed": participant.payment_confirmed})
 
         data = json.dumps(participants,  default=dateconvert)
         r = make_response(data)
@@ -309,7 +332,7 @@ def eventparticipants(id):
         return make_response("No participants found", 503)
 
 
-@app.route("/api/data/v1/events/paymentconfirm", methods=['POST'])
+@app.route("/api/events/v1/paymentconfirm", methods=['GET'])
 def paymentconfirm():
     """Return from succesfull payment + notification url
 
@@ -319,9 +342,10 @@ def paymentconfirm():
     Returns:
         json -- json object of events participants
     """
+    data = request.form['ORDER_NUMBER']
 
 
-@app.route("/api/data/v1/events/paymentcancel", methods=['POST'])
+@app.route("/api/event/v1/paymentcancel", methods=['GET'])
 def paymmentcancel():
     """Return from cancelled payment
 
@@ -333,7 +357,7 @@ def paymmentcancel():
     """
 
 
-@app.route("/api/data/v1/events/auth/settings", methods=['GET'])
+@app.route("/api/eventsdata/v1/auth/settings", methods=['GET'])
 def allsettings():
     """Get all settings
 
@@ -355,7 +379,7 @@ def allsettings():
     return response
 
 
-@app.route("/api/data/v1/events/auth/settings/add", methods=['POST'])
+@app.route("/api/events/v1/auth/settings/add", methods=['POST'])
 def addsettings():
     """Add setting
 
@@ -390,6 +414,11 @@ def updatesettings():
     db.session.commit()
     response = make_response("Setting updated", 200)
     return response
+
+
+def getSetting(key):
+    setting = Settings.query.filter_by(key=key).first()
+    return setting.value
 
 
 if __name__ == "__main__":
@@ -435,7 +464,10 @@ class Group(db.Model):
     number_prefix = db.Column(db.String(80), nullable=True)
     tagrange_start = db.Column(db.Integer, nullable=True)
     tagrange_end = db.Column(db.Integer, nullable=True)
+    racenumberrange_start = db.Column(db.Integer, nullable=True)
+    racenumberrange_end = db.Column(db.Integer, nullable=True)
     current_tag = db.Column(db.Integer, nullable=True)
+    current_racenumber = db.Column(db.Integer, nullable=True)
     event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
     participants = db.relationship('Participant', backref='event_group',
                                    cascade="all, delete, delete-orphan")
