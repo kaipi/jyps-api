@@ -99,7 +99,7 @@ def cyclistdata():
     return response
 
 
-@app.route("/api/data/v1/events/allevents", methods=['GET'])
+@app.route("/api/event/data/v1/event/allevents", methods=['GET'])
 def allevents():
     """Get all event data
 
@@ -123,7 +123,7 @@ def allevents():
     return response
 
 
-@app.route("/api/data/v1/events/<int:id>", methods=['GET'])
+@app.route("/api/events/v1/event/<int:id>", methods=['GET'])
 def oneevent(id):
     """Get event data
 
@@ -147,7 +147,7 @@ def oneevent(id):
     return r
 
 
-@app.route("/api/data/v1/events/auth/createevent", methods=['POST'])
+@app.route("/api/events/v1/createevent", methods=['POST'])
 def createevent():
     """Create new event
 
@@ -177,7 +177,7 @@ def createevent():
     return response
 
 
-@app.route("/api/data/v1/events/auth/deleteevent", methods=['DELETE'])
+@app.route("/api/events/v1/deleteevent", methods=['DELETE'])
 def deleteevent():
     """Delete event
 
@@ -195,7 +195,7 @@ def deleteevent():
     return response
 
 
-@app.route("/api/data/v1/events/addparticipant", methods=['POST'])
+@app.route("/api/events/v1/addparticipant", methods=['POST'])
 def addparticipant():
     """Add participant
 
@@ -286,7 +286,7 @@ def addparticipant():
     return response
 
 
-@app.route("/api/data/v1/events/auth/deleteparticipant", methods=['DELETE'])
+@app.route("/api/events/v1/deleteparticipant", methods=['DELETE'])
 def deleteparticipant():
     """Delete participant
 
@@ -304,7 +304,7 @@ def deleteparticipant():
     return response
 
 
-@app.route("/api/data/v1/events/<int:id>/participants", methods=['GET'])
+@app.route("/api/events/v1/events/<int:id>/participants", methods=['GET'])
 def eventparticipants(id):
     """Get participants of event
 
@@ -345,7 +345,7 @@ def paymentconfirm():
     data = request.form['ORDER_NUMBER']
 
 
-@app.route("/api/event/v1/paymentcancel", methods=['GET'])
+@app.route("/api/events/v1/paymentcancel", methods=['GET'])
 def paymmentcancel():
     """Return from cancelled payment
 
@@ -357,7 +357,7 @@ def paymmentcancel():
     """
 
 
-@app.route("/api/eventsdata/v1/auth/settings", methods=['GET'])
+@app.route("/api/events/v1/settings", methods=['GET'])
 def allsettings():
     """Get all settings
 
@@ -379,7 +379,7 @@ def allsettings():
     return response
 
 
-@app.route("/api/events/v1/auth/settings/add", methods=['POST'])
+@app.route("/api/events/v1/settings/add", methods=['POST'])
 def addsettings():
     """Add setting
 
@@ -398,7 +398,7 @@ def addsettings():
     return response
 
 
-@app.route("/api/data/v1/events/auth/settings/<int:id>/update", methods=['PUT'])
+@app.route("/api/events/v1/settings/<int:id>/update", methods=['PUT'])
 def updatesettings():
     """update setting
 
