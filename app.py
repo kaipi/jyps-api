@@ -24,6 +24,7 @@ app = Flask(__name__)
 CORS(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://jypsdata:jypsdata123@localhost/jypsdata'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['MAIL_MAILER'] = '/sbin/sendmail'
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 mail = Mail(app)
@@ -99,7 +100,7 @@ def cyclistdata():
     return response
 
 
-@app.route("/api/event/data/v1/event/allevents", methods=['GET'])
+@app.route("/api/event/v1/event/allevents", methods=['GET'])
 def allevents():
     """Get all event data
 
