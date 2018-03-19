@@ -161,7 +161,7 @@ def createevent():
     event = Event(name=request_data["name"], location=request_data["location"], date=request_data["date"], general_description=request_data["description"],
                   groups_description=request_data["groupsDescription"], googlemaps_link=request_data[
                       "googlemaps_link"], paytrail_product=request_data["paytrail_product"],
-                  email_template=request_data["email_template"])
+                  email_template=request_data["email_template"], payment_description=request_data["paymentDescription"])
     for item in request_data["groups"]:
         group = Group(name=item["name"], distance=item["distance"],
                       price_prepay=Decimal(item["price_prepay"]), price=Decimal(item["price"]), product_code=item["product_code"],
@@ -413,6 +413,43 @@ def updatesettings():
     setting.value = request_data["value"]
     db.session.commit()
     response = make_response("Setting updated", 200)
+    return response
+
+
+@app.route("/api/events/v1/users/add", methods=['POST'])
+def adduser():
+    """Add user
+
+    Decorators:
+        app
+
+    Returns:
+        String -- Return code
+    """
+    request_data = request.json
+    user = User(
+        username=request_data["username"], password=request_data["password"], email=request_data["email"], realname=request_data["realname"])
+    db.session.add(user)
+    db.session.commit()
+    response = make_response("User added", 200)
+    return response
+
+
+@app.route("/api/events/v1/users/delete", methods=['DELETE'])
+def deleteuser():
+    """Delete user
+
+    Decorators:
+        app
+
+    Returns:
+        String -- Delete one User
+    """
+    request_data = request.json
+    user = User.query.get(request_data["id"])
+    db.session.delete(user)
+    db.session.commit()
+    response = make_response("User deleted", 200)
     return response
 
 
