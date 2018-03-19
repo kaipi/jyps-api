@@ -100,7 +100,7 @@ def cyclistdata():
     return response
 
 
-@app.route("/api/event/v1/event/allevents", methods=['GET'])
+@app.route("/api/events/v1/event/allevents", methods=['GET'])
 def allevents():
     """Get all event data
 
