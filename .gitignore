@@ -13,7 +13,7 @@ _mailinglist
 .cache/
 .idea/
 .vscode/
-
+localconfig.py
 # Coverage reports
 htmlcov
 .coverage

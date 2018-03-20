@@ -20,17 +20,17 @@ from flask_migrate import Migrate
 from flask_sendmail import Mail
 from flask_sendmail import Message
 import bcrypt
+
 app = Flask(__name__)
 CORS(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://jypsdata:jypsdata123@localhost/jypsdata'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['MAIL_MAILER'] = '/sbin/sendmail'
+app.config['MAIL_MAILER'] = '/usr/sbin/sendmail'
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 mail = Mail(app)
-
 # Setup the Flask-JWT-Simple extension
-app.config['JWT_SECRET_KEY'] = "SUPERSECRET"  # Change this!
+app.config['JWT_SECRET_KEY'] = "SEEECRET"  # Change this!
 jwt = JWTManager(app)
 
 
@@ -228,10 +228,10 @@ def addparticipant():
             "currency": "EUR",
             "locale": "fi_FI",
             "urlSet": {
-                "success": "https://www.esimerkkikauppa.fi/sv/success",
-                "failure": "https://www.esimerkkikauppa.fi/sv/failure",
+                "success": getSetting("PaytrailSuccessURL"),
+                "failure": getSetting("PaytrailFailureURL"),
                 "pending": "",
-                "notification": "https://www.esimerkkikauppa.fi/sv/success"
+                "notification": getSetting("PaytrailSuccessURL")
             },
             "orderDetails": {
                 "includeVat": "1",
@@ -265,23 +265,20 @@ def addparticipant():
         paytrail_response = requests.post(
             "https://payment.paytrail.com/api-payment/create",
             headers={'X-Verkkomaksut-Api-Version': '1'},
-            auth=HTTPBasicAuth('13466', '6pKF4jkv97zmqBJ3ZL8gUw5DfT2NMQ'),
+            auth=HTTPBasicAuth(getSetting("PaytrailMerchantId"),
+                               getSetting("PaytrailMerchantSecret")),
             json=paytrail_json)
         response = make_response(json.dumps(paytrail_response.json()), 200)
         response.headers['Content-Type'] = 'application/json'
-        email = Message("Ilmoittautumisesi tapahtumaan",
-                        sender=("JYPS Ilmoittautumiset",
-                                "ilmoittatumiset@jyps.fi"),
-                        recipients=[participant.email])
-        email.body = event.email_template + "Ilmoittautumis tietosi: "
-        mail.send(email)
+        task = Task(target=participant.email,
+                    param=event.email_template,  status=0, type=1)
         return response
-    email = Message("Ilmoittautumisesi tapahtumaan",
-                    sender=("JYPS Ilmoittautumiset",
-                            "ilmoittatumiset@jyps.fi"),
-                    recipients=[participant.email])
-    email.body = event.email_template + "Ilmoittautumis tietosi:"
-    mail.send(email)
+
+    task = Task(target=participant.email, param=event.email_template,
+                status=0, type=1)
+
+    db.session.add(task)
+    db.session.commit()
     response = make_response(json.dumps(
         {"msg": "Added ok", "type": "normal"}), 200)
     return response
@@ -464,7 +461,7 @@ if __name__ == "__main__":
 
 
 class Data(db.Model):
-    """ORM object for data
+    """ORM object for cyclist data
     """
     id = db.Column(db.Integer, primary_key=True)
     location = db.Column(db.String(80), nullable=True)
@@ -473,7 +470,7 @@ class Data(db.Model):
 
 
 class Event(db.Model):
-    """ORM object for data
+    """ORM object for event data
     """
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(80), nullable=True)
@@ -490,7 +487,7 @@ class Event(db.Model):
 
 
 class Group(db.Model):
-    """ORM object for data
+    """ORM object for group data
     """
     __tablename__ = "event_group"
     id = db.Column(db.Integer, primary_key=True)
@@ -512,7 +509,7 @@ class Group(db.Model):
 
 
 class Participant(db.Model):
-    """ORM object for data
+    """ORM object for participant data
     """
     id = db.Column(db.Integer, primary_key=True)
     firstname = db.Column(db.String(80), nullable=True)
@@ -534,7 +531,7 @@ class Participant(db.Model):
 
 
 class Settings(db.Model):
-    """ORM object for data
+    """ORM object for settings data
     """
     id = db.Column(db.Integer, primary_key=True)
     key = db.Column(db.String(80), nullable=True)
@@ -542,10 +539,23 @@ class Settings(db.Model):
 
 
 class User(db.Model):
-    """ORM object for data
+    """ORM object for user data
     """
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), nullable=True)
     password = db.Column(db.String(80), nullable=True)
     email = db.Column(db.String(80), nullable=True)
     realname = db.Column(db.String(80), nullable=True)
+
+
+class Task(db.Model):
+    """ORM object for task data
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    type = db.Column(db.Integer, nullable=True)
+    status = db.Column(db.Integer, nullable=True, default=0)
+    target = db.Column(db.String(80), nullable=True)
+    param = db.Column(db.String(80), nullable=True)
+    created = db.Column(db.DateTime, nullable=True,
+                        default=datetime.datetime.now)
+    handled = db.Column(db.DateTime, nullable=True)
