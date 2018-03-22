@@ -466,7 +466,7 @@ def deleteuser():
 
 def getSetting(key):
     setting = Settings.query.filter_by(setting_key=key).first()
-    return setting.value
+    return setting.setting_value
 
 
 if __name__ == "__main__":
