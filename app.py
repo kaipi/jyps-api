@@ -20,7 +20,7 @@ from flask_migrate import Migrate
 from flask_sendmail import Mail
 from flask_sendmail import Message
 import bcrypt
-
+import hashlib
 app = Flask(__name__)
 CORS(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://jypsdata:jypsdata123@localhost/jypsdata'
@@ -340,7 +340,19 @@ def paymentconfirm():
     Returns:
         json -- json object of events participants
     """
-    data = request.form['ORDER_NUMBER']
+
+    returndata = request.form['ORDER_NUMBER'] + "|" + request.form['TIMESTAMP'] + "|" + \
+        request.form['PAID'] + "|" + request.form['METHOD'] + \
+        "|" + getSetting("PaytrailMerchantSecret")
+
+    returndata = returndata.upper()
+
+    if getSetting("PaytrailMerchantSecret") == hashlib.md5(returndata).hexdigest():
+        participant = Participant.query.filter_by(
+            reference_number=request.form['ORDER_NUMBER'])
+        participant.payment_confirmed = True
+        db.session.commit(participant)
+        return redirect("https://tapahtumat.jyps.fi", code=302)
 
 
 @app.route("/api/events/v1/paymentcancel", methods=['GET'])
@@ -353,6 +365,7 @@ def paymmentcancel():
     Returns:
         json -- json object of events participants
     """
+    return redirect("https://tapahtumat.jyps.fi", code=302)
 
 
 @app.route("/api/events/v1/settings", methods=['GET'])
@@ -526,6 +539,7 @@ class Participant(db.Model):
     public = db.Column(db.Boolean, nullable=True)
     tagnumber = db.Column(db.String(80), nullable=True)
     number = db.Column(db.String(80), nullable=True)
+    referencenumber = db.Column(db.Integer,  nullable=True)
     group_id = db.Column(db.Integer, db.ForeignKey(
         'event_group.id'), nullable=False)
 
