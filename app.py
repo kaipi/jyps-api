@@ -51,7 +51,7 @@ def require_appkey(view_function):
     @wraps(view_function)
     # the new, post-decoration function. Note *args and **kwargs here.
     def decorated_function(*args, **kwargs):
-        if request.args.get('key') and request.args.get('key') == getSetting("apikey"):
+        if request.headers['X-Api-Key'] == getSetting("apikey"):
             return view_function(*args, **kwargs)
         else:
             abort(401)
@@ -149,6 +149,7 @@ def oneevent(id):
 
 
 @app.route("/api/events/v1/createevent", methods=['POST'])
+@jwt_required
 def createevent():
     """Create new event
 
@@ -179,6 +180,7 @@ def createevent():
 
 
 @app.route("/api/events/v1/deleteevent", methods=['DELETE'])
+@jwt_required
 def deleteevent():
     """Delete event
 
@@ -197,6 +199,7 @@ def deleteevent():
 
 
 @app.route("/api/events/v1/addparticipant", methods=['POST'])
+@require_appkey
 def addparticipant():
     """Add participant
 
@@ -219,12 +222,17 @@ def addparticipant():
         number=racenumber, tagnumber=racetagnumber, public=request_data["public"], payment_type=request_data["paymentmethod"])
     db.session.add(participant)
     db.session.commit()
+    db.session.flush()
     group = Group.query.get(participant.group_id)
     event = Event.query.get(group.event_id)
+    # set reference
+    participant.reference_number = participant.id + group.id + event.id
+    db.session.commit()
+
     # if payment is to paytrail
     if participant.payment_type == 1:
         paytrail_json = {
-            "orderNumber": participant.id,
+            "orderNumber": participant.reference_number,
             "currency": "EUR",
             "locale": "fi_FI",
             "urlSet": {
@@ -272,6 +280,8 @@ def addparticipant():
         response.headers['Content-Type'] = 'application/json'
         task = Task(target=participant.email,
                     param=event.email_template,  status=0, type=1)
+        db.session.add(task)
+        db.session.commit()
         return response
 
     task = Task(target=participant.email, param=event.email_template,
@@ -285,6 +295,7 @@ def addparticipant():
 
 
 @app.route("/api/events/v1/deleteparticipant", methods=['DELETE'])
+@jwt_required
 def deleteparticipant():
     """Delete participant
 
@@ -352,7 +363,7 @@ def paymentconfirm():
             reference_number=request.form['ORDER_NUMBER'])
         participant.payment_confirmed = True
         db.session.commit(participant)
-        return redirect("https://tapahtumat.jyps.fi", code=302)
+        return redirect("https://tapahtumat.jyps.fi/event/" + participant.group_id + "/eventinfo/?payment_confirmed=true", code=302)
 
 
 @app.route("/api/events/v1/paymentcancel", methods=['GET'])
@@ -365,10 +376,11 @@ def paymmentcancel():
     Returns:
         json -- json object of events participants
     """
-    return redirect("https://tapahtumat.jyps.fi", code=302)
+    return redirect("https://tapahtumat.jyps.fi/event/" + participant.group_id + "/eventinfo/?payment_confirmed=false", code=302)
 
 
 @app.route("/api/events/v1/settings", methods=['GET'])
+@jwt_required
 def allsettings():
     """Get all settings
 
@@ -382,8 +394,8 @@ def allsettings():
     x = []
     for item in res:
         x.append({"id": item.id,
-                  "key": item.location,
-                  "value": item.date})
+                  "key": item.setting_key,
+                  "value": item.setting_value})
     data = json.dumps([dict(y) for y in x], default=dateconvert)
     response = make_response(data)
     response.headers['Content-Type'] = 'application/json'
@@ -391,6 +403,7 @@ def allsettings():
 
 
 @app.route("/api/events/v1/settings/add", methods=['POST'])
+@jwt_required
 def addsettings():
     """Add setting
 
@@ -410,6 +423,7 @@ def addsettings():
 
 
 @app.route("/api/events/v1/settings/<int:id>/update", methods=['PUT'])
+@jwt_required
 def updatesettings():
     """update setting
 
@@ -428,6 +442,7 @@ def updatesettings():
 
 
 @app.route("/api/events/v1/users/add", methods=['POST'])
+@jwt_required
 def adduser():
     """Add user
 
@@ -447,6 +462,7 @@ def adduser():
 
 
 @app.route("/api/events/v1/users/delete", methods=['DELETE'])
+@jwt_required
 def deleteuser():
     """Delete user
 
