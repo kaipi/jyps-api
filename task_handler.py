@@ -12,7 +12,7 @@ mail = Mail(app)
 
 def handleEmail(task):
     msg = Message("Imoittautumisesi JYPS Ry:n tapahtumaan",
-                  sender="imoittautuminen@jyps.fi",
+                  sender="noreply@jyps.fi",
                   recipients=[task.target],
                   body=task.param)
     mail.send(msg)
@@ -21,10 +21,9 @@ def handleEmail(task):
 
 
 # mainlooop for taskhandler
-i = 0
+
 while True:
-    i = i + 1
-    print "Loop: " + str(i)
+    print "Loop"
     tasks = Task.query.filter_by(
         status=0).all()
 
@@ -32,4 +31,4 @@ while True:
         if task.type == 1:
             handleEmail(task)
     db.session.flush()
-    time.sleep(5)
+    time.sleep(30)

@@ -17,18 +17,27 @@ from flask_jwt_simple import (
     JWTManager, jwt_required, create_jwt, get_jwt_identity
 )
 from flask_migrate import Migrate
-
 import bcrypt
 import hashlib
+
+from localconfig import jwtkey, dbstring
+
 app = Flask(__name__)
 CORS(app)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://jypsdata:jypsdata123@localhost/jypsdata'
+app.config['SQLALCHEMY_DATABASE_URI'] = dbstring
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 # Setup the Flask-JWT-Simple extension
-app.config['JWT_SECRET_KEY'] = "SEEECRET"  # Change this!
 jwt = JWTManager(app)
+
+
+app.config['JWT_SECRET_KEY'] = jwtkey  # Change this!
+
+
+def getSetting(key):
+    setting = Settings.query.filter_by(setting_key=key).first()
+    return setting.setting_value
 
 
 def dateconvert(o):
@@ -352,7 +361,6 @@ def paymentconfirm():
         "|" + getSetting("PaytrailMerchantSecret")
 
     returndata = returndata.upper()
-    print returndata
     participant = Participant.query.filter_by(
         referencenumber=request.args.get('ORDER_NUMBER'))
     if getSetting("PaytrailMerchantSecret") == hashlib.md5(returndata).hexdigest():
@@ -438,6 +446,30 @@ def updatesettings():
     return response
 
 
+@app.route("/api/events/v1/users/allusers", methods=['GET'])
+@jwt_required
+def allusers():
+    """Get all user data
+
+    Decorators:
+        app
+
+    Returns:
+        json -- json array of object(s) containing all events
+    """
+    res = User.query.all()
+    x = []
+    for item in res:
+        x.append({"id": item.id,
+                  "username": item.username,
+                  "email": item.email,
+                  "realname": item.realname})
+    data = json.dumps([dict(y) for y in x], default=dateconvert)
+    response = make_response(data)
+    response.headers['Content-Type'] = 'application/json'
+    return response
+
+
 @app.route("/api/events/v1/users/add", methods=['POST'])
 @jwt_required
 def adduser():
@@ -475,11 +507,6 @@ def deleteuser():
     db.session.commit()
     response = make_response("User deleted", 200)
     return response
-
-
-def getSetting(key):
-    setting = Settings.query.filter_by(setting_key=key).first()
-    return setting.setting_value
 
 
 if __name__ == "__main__":
