@@ -11,7 +11,6 @@ mail = Mail(app)
 
 
 def handleEmail(task):
-    print "Processing message to: " + task.target
     msg = Message("Imoittautumisesi JYPS Ry:n tapahtumaan",
                   sender="imoittautuminen@jyps.fi",
                   recipients=[task.target],

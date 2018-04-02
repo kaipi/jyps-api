@@ -4,7 +4,7 @@
 """
 import json
 import datetime
-from flask import Flask, jsonify, make_response, request, abort
+from flask import Flask, jsonify, make_response, request, abort, redirect
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import requests
@@ -17,18 +17,15 @@ from flask_jwt_simple import (
     JWTManager, jwt_required, create_jwt, get_jwt_identity
 )
 from flask_migrate import Migrate
-from flask_sendmail import Mail
-from flask_sendmail import Message
+
 import bcrypt
 import hashlib
 app = Flask(__name__)
 CORS(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://jypsdata:jypsdata123@localhost/jypsdata'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['MAIL_MAILER'] = '/usr/sbin/sendmail'
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
-mail = Mail(app)
 # Setup the Flask-JWT-Simple extension
 app.config['JWT_SECRET_KEY'] = "SEEECRET"  # Change this!
 jwt = JWTManager(app)
@@ -226,7 +223,7 @@ def addparticipant():
     group = Group.query.get(participant.group_id)
     event = Event.query.get(group.event_id)
     # set reference
-    participant.reference_number = participant.id + group.id + event.id
+    participant.referencenumber = participant.id + group.id + event.id
     db.session.commit()
 
     # if payment is to paytrail
@@ -294,9 +291,9 @@ def addparticipant():
     return response
 
 
-@app.route("/api/events/v1/deleteparticipant", methods=['DELETE'])
+@app.route("/api/events/v1/deleteparticipant/<int:id>", methods=['DELETE'])
 @jwt_required
-def deleteparticipant():
+def deleteparticipant(id):
     """Delete participant
 
     Decorators:
@@ -305,8 +302,7 @@ def deleteparticipant():
     Returns:
         String -- Delete one Participant
     """
-    request_data = request.json
-    participant = Participant.query.get(request_data["id"])
+    participant = Participant.query.get(id)
     db.session.delete(participant)
     db.session.commit()
     response = make_response("Participant deleted", 200)
@@ -351,19 +347,20 @@ def paymentconfirm():
     Returns:
         json -- json object of events participants
     """
-
-    returndata = request.form['ORDER_NUMBER'] + "|" + request.form['TIMESTAMP'] + "|" + \
-        request.form['PAID'] + "|" + request.form['METHOD'] + \
+    returndata = request.args.get('ORDER_NUMBER') + "|" + request.args.get('TIMESTAMP') + "|" + \
+        request.args.get('PAID') + "|" + request.args.get('METHOD') + \
         "|" + getSetting("PaytrailMerchantSecret")
 
     returndata = returndata.upper()
-
+    print returndata
+    participant = Participant.query.filter_by(
+        referencenumber=request.args.get('ORDER_NUMBER'))
     if getSetting("PaytrailMerchantSecret") == hashlib.md5(returndata).hexdigest():
-        participant = Participant.query.filter_by(
-            reference_number=request.form['ORDER_NUMBER'])
         participant.payment_confirmed = True
         db.session.commit(participant)
         return redirect("https://tapahtumat.jyps.fi/event/" + participant.group_id + "/eventinfo/?payment_confirmed=true", code=302)
+    else:
+        return redirect("https://tapahtumat.jyps.fi/event/" + participant.group_id + "/eventinfo/?payment_confirmed=false", code=302)
 
 
 @app.route("/api/events/v1/paymentcancel", methods=['GET'])
