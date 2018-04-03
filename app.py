@@ -232,13 +232,14 @@ def addparticipant():
     group = Group.query.get(participant.group_id)
     event = Event.query.get(group.event_id)
     # set reference
-    participant.referencenumber = participant.id + group.id + event.id
+    participant.referencenumber = str(
+        participant.id) + str(group.id) + str(event.id)
     db.session.commit()
 
     # if payment is to paytrail
     if participant.payment_type == 1:
         paytrail_json = {
-            "orderNumber": participant.reference_number,
+            "orderNumber": participant.referencenumber,
             "currency": "EUR",
             "locale": "fi_FI",
             "urlSet": {
