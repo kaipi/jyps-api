@@ -361,15 +361,15 @@ def paymentconfirm():
         request.args.get('PAID') + "|" + request.args.get('METHOD') + \
         "|" + getSetting("PaytrailMerchantSecret")
 
-    returndata = returndata.upper()
     participant = Participant.query.filter_by(
-        referencenumber=request.args.get('ORDER_NUMBER'))
-    if getSetting("PaytrailMerchantSecret") == hashlib.md5(returndata).hexdigest():
+        referencenumber=request.args.get('ORDER_NUMBER')).first()
+    group = Group.query.get(participant.group_id)
+    if request.args.get('RETURN_AUTHCODE') == hashlib.md5(returndata).hexdigest().upper():
         participant.payment_confirmed = True
-        db.session.commit(participant)
-        return redirect("https://tapahtumat.jyps.fi/event/" + participant.group_id + "/eventinfo/?payment_confirmed=true", code=302)
+        db.session.commit()
+        return redirect("https://tapahtumat.jyps.fi/event/" + str(group.event_id) + "/eventinfo/?payment_confirmed=true", code=302)
     else:
-        return redirect("https://tapahtumat.jyps.fi/event/" + participant.group_id + "/eventinfo/?payment_confirmed=false", code=302)
+        return redirect("https://tapahtumat.jyps.fi/event/" + str(group.event_id) + "/eventinfo/?payment_confirmed=false", code=302)
 
 
 @app.route("/api/events/v1/paymentcancel", methods=['GET'])
@@ -382,7 +382,11 @@ def paymmentcancel():
     Returns:
         json -- json object of events participants
     """
-    return redirect("https://tapahtumat.jyps.fi/event/" + participant.group_id + "/eventinfo/?payment_confirmed=false", code=302)
+    participant = Participant.query.filter_by(
+        referencenumber=request.args.get('ORDER_NUMBER')).first()
+    group = Group.query.get(participant.group_id)
+
+    return redirect("https://tapahtumat.jyps.fi/event/" + str(group.event_id) + "/eventinfo/?payment_confirmed=false", code=302)
 
 
 @app.route("/api/events/v1/settings", methods=['GET'])
