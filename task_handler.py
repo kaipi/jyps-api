@@ -5,7 +5,7 @@ from flask import Flask
 import datetime
 import time
 from app import Task, db
-from flask_sendmail import Mail, Message
+from flask_mail import Mail, Message
 app = Flask(__name__)
 mail = Mail(app)
 
