@@ -4,7 +4,7 @@
 """
 import json
 import datetime
-from flask import Flask, jsonify, make_response, request, abort, redirect
+from flask import Flask, jsonify, make_response, request, abort, redirect, Response
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import requests
@@ -514,6 +514,32 @@ def deleteuser():
     return response
 
 
+@app.route("/api/events/v1/<int:id>/chrono", methods=['GET'])
+@jwt_required
+def getchronocsv(id):
+    """Get J2C compatible csv out of participants
+
+    Decorators:
+        app
+
+    Returns:
+        String - csv of participants for Chrono
+    """
+
+    event = Event.query.get(id)
+    csv = "FIRST_NAME,LAST_NAME,CLASS,NUMBER,CITY,SPONSOR,MAKE,CLUB,ENGINE,EMAIL,TRANSPONDER" + "\n"
+    for group in event.groups:
+        for participant in group.participants:
+            csv = csv + participant.firstname + "," + \
+                participant.lastname + "," + group.name + "," + participant.number + \
+                "," + participant.city + ",,,,," + participant.email + \
+                "," + participant.tagnumber + "\n"
+    return Response(csv,
+                    mimetype="text/csv",
+                    headers={"Content-disposition":
+                             "attachment; filename=chrono.csv"})
+
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0', threaded=True)
 
@@ -577,7 +603,7 @@ class Participant(db.Model):
     city = db.Column(db.String(80), nullable=True)
     telephone = db.Column(db.String(80), nullable=True)
     email = db.Column(db.String(80), nullable=True)
-    club = db.Column(db.String(80), nullable=True)
+    club = db.Column(db.String(80), nullable=True, default="")
     payment_type = db.Column(db.Integer, nullable=True)
     payment_confirmed = db.Column(db.Boolean, nullable=True)
     memo = db.Column(db.String(250), nullable=True)
