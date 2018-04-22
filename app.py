@@ -123,10 +123,41 @@ def allevents():
                   "location": item.location,
                   "date": item.date,
                   "name": item.name,
-                  "googlemaps_link": item.googlemaps_link})
+                  "googlemaps_link": item.googlemaps_link,
+                  "close_date": item.close_date,
+                  "open_date": item.open_date})
     data = json.dumps([dict(y) for y in x], default=dateconvert)
     response = make_response(data)
     response.headers['Content-Type'] = 'application/json'
+    return response
+
+
+@app.route("/api/events/v1/event/update/<int:id>", methods=['POST'])
+@jwt_required
+def updateevent(id):
+    """Update event data
+
+    Decorators:
+        app
+
+    Returns:
+        ok/not ok
+    """
+    request_data = request.json
+    event = Event.query.get(id)
+    event.name = request_data["name"]
+    event.close_date = request_data["close_date"]
+    event.date = request_data["date"]
+    event.email_template = request_data["email_template"]
+    event.general_description = request_data["general_description"]
+    event.groups_description = request_data["groups_description"]
+    event.location = request_data["location"]
+    event.open_date = request_data["open_date"]
+    event.payment_description = request_data["payment_description"],
+    event.paytrail_product = request_data["paytrail_product"],
+    event.googlemaps_link = request_data["googlemaps_link"]
+    db.session.commit()
+    response = make_response("Event updated", 200)
     return response
 
 
@@ -144,10 +175,10 @@ def oneevent(id):
     groups = []
     for group in event.groups:
         groups.append({"id": group.id, "name": group.name, "distance": simplejson.dumps(Decimal(group.distance)),
-                       "price_prepay": simplejson.dumps(Decimal(group.price_prepay)), "price": simplejson.dumps(Decimal(group.price)), "product_code": group.product_code, "number_prefix": group.number_prefix, "tagrange_start": group.tagrange_start, "tagrange_end": group.tagrange_end, "current_tag": group.current_tag})
+                       "price_prepay": simplejson.dumps(Decimal(group.price_prepay)), "price": simplejson.dumps(Decimal(group.price)), "product_code": group.product_code, "number_prefix": group.number_prefix, "tagrange_start": group.tagrange_start, "tagrange_end": group.tagrange_end, "current_tag": group.current_tag, "racenumberrange_start": group.racenumberrange_start, "racenumberrange_end": group.racenumberrange_end})
     response = ({"id": event.id, "location": event.location,
                  "general_description": event.general_description, "date": event.date, "payment_description": event.payment_description,
-                 "groups_description": event.groups_description, "name": event.name, "groups": groups})
+                 "groups_description": event.groups_description, "name": event.name, "groups": groups, "email_template": event.email_template, "close_date": event.close_date, "open_date": event.open_date, "paytrail_product": event.paytrail_product, "googlemaps_link": event.googlemaps_link})
     data = json.dumps(response,  default=dateconvert)
     r = make_response(data)
     r.headers['Content-Type'] = 'application/json'
@@ -169,7 +200,7 @@ def createevent():
     event = Event(name=request_data["name"], location=request_data["location"], date=request_data["date"], general_description=request_data["description"],
                   groups_description=request_data["groupsDescription"], googlemaps_link=request_data[
                       "googlemaps_link"], paytrail_product=request_data["paytrail_product"],
-                  email_template=request_data["email_template"], payment_description=request_data["paymentDescription"])
+                  email_template=request_data["email_template"], payment_description=request_data["paymentDescription"], close_date=request_data["close_date"])
     for item in request_data["groups"]:
         group = Group(name=item["name"], distance=item["distance"],
                       price_prepay=Decimal(item["price_prepay"]), price=Decimal(item["price"]), product_code=item["product_code"],
@@ -514,6 +545,24 @@ def deleteuser():
     return response
 
 
+@app.route("/api/events/v1/users/resetpassword", methods=['POST'])
+@jwt_required
+def resetpassword():
+    """Reset user password
+
+    Decorators:
+        app
+
+    Returns:
+        OK if resetted 
+    """
+    request_data = request.json
+    user = User.query.get(request_data["id"])
+    db.session.commit()
+    response = make_response("User password reset", 200)
+    return response
+
+
 @app.route("/api/events/v1/<int:id>/chrono", methods=['GET'])
 @jwt_required
 def getchronocsv(id):
@@ -540,6 +589,41 @@ def getchronocsv(id):
                              "attachment; filename=chrono.csv"})
 
 
+@app.route("/api/events/v1/deletegroup/<int:id>", methods=['DELETE'])
+@jwt_required
+def deletegroup(id):
+    """Delete group
+
+    Decorators:
+        app
+
+    Returns:
+       200 if was deleted ok
+    """
+    group = Group.query.get(id)
+    db.session.delete(group)
+    db.session.commit()
+    response = make_response("Group deleted", 200)
+    return response
+
+
+@app.route("/api/events/v1/addgroup/<int:id>", methods=['POST'])
+@jwt_required
+def addgroup(id):
+    """Add group to existing event
+
+    Decorators:
+        app
+
+    Returns:
+       200 if was added ok
+    """
+    event = Event.query.get(id)
+    db.session.commit()
+    response = make_response("Group added", 200)
+    return response
+
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0', threaded=True)
 
@@ -560,6 +644,8 @@ class Event(db.Model):
     name = db.Column(db.String(80), nullable=True)
     location = db.Column(db.String(80), nullable=True)
     date = db.Column(db.Date, nullable=True)
+    close_date = db.Column(db.Date, nullable=True)
+    open_date = db.Column(db.Date, nullable=True)
     general_description = db.Column(db.String(80), nullable=True)
     payment_description = db.Column(db.String(80), nullable=True)
     groups_description = db.Column(db.String(80), nullable=True)
