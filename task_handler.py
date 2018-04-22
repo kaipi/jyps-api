@@ -9,21 +9,22 @@ from flask_mail import Mail, Message
 app = Flask(__name__)
 mail = Mail(app)
 
-
 def handleEmail(task):
-    msg = Message("Imoittautumisesi JYPS Ry:n tapahtumaan",
-                  sender="noreply@jyps.fi",
-                  recipients=[task.target],
-                  body=task.param)
-    mail.send(msg)
-    task.status = 2
-    db.session.commit()
+    with app.app_context():
+       msg = Message("Imoittautumisesi JYPS Ry:n tapahtumaan",
+                     sender="noreply@jyps.fi",
+                    recipients=[task.target],
+                     body=task.param)
+       mail.send(msg)
+       task.status = 2
+       task.handled = datetime.datetime.now()
+       db.session.commit()
 
 
 # mainlooop for taskhandler
 
 while True:
-    print "Loop"
+    print("Loop")
     tasks = Task.query.filter_by(
         status=0).all()
 
