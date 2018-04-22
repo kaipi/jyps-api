@@ -20,7 +20,6 @@ def handleEmail(task):
        task.handled = datetime.datetime.now()
        db.session.commit()
 
-
 # mainlooop for taskhandler
 
 while True:
