@@ -156,6 +156,23 @@ def updateevent(id):
     event.payment_description = request_data["payment_description"],
     event.paytrail_product = request_data["paytrail_product"],
     event.googlemaps_link = request_data["googlemaps_link"]
+    i = 0
+    for group in event.groups:
+        # TODO: Tidy this crap up
+        x = request_data["groups"]
+        z = x[i]
+        group.name = z["name"]
+        group.current_tag = z["current_tag"]
+        group.distance = z["distance"]
+        group.number_prefix = z["number_prefix"]
+        group.price = z["price"]
+        group.price_prepay = z["price_prepay"]
+        group.product_code = z["product_code"]
+        group.racenumberrange_start = z["racenumberrange_start"]
+        group.racenumberrange_end = z["racenumberrange_end"]
+        group.tagrange_end = z["tagrange_end"]
+        group.tagrange_start = z["tagrange_start"]
+        i = i + 1
     db.session.commit()
     response = make_response("Event updated", 200)
     return response
@@ -197,10 +214,10 @@ def createevent():
         String -- OK or Error description
     """
     request_data = request.json
-    event = Event(name=request_data["name"], location=request_data["location"], date=request_data["date"], general_description=request_data["description"],
+    event = Event(name=request_data["name"], location=request_data["location"], date=request_data["date"], general_description=request_data["general_description"],
                   groups_description=request_data["groupsDescription"], googlemaps_link=request_data[
                       "googlemaps_link"], paytrail_product=request_data["paytrail_product"],
-                  email_template=request_data["email_template"], payment_description=request_data["paymentDescription"], close_date=request_data["close_date"])
+                  email_template=request_data["email_template"], payment_description=request_data["paymentDescription"], close_date=request_data["close_date"], open_date=request_data["open_date"])
     for item in request_data["groups"]:
         group = Group(name=item["name"], distance=item["distance"],
                       price_prepay=Decimal(item["price_prepay"]), price=Decimal(item["price"]), product_code=item["product_code"],
