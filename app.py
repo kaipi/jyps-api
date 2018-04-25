@@ -26,8 +26,8 @@ app = Flask(__name__)
 CORS(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = dbstring
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
-migrate = Migrate(app, db)
+db = SQLAlchemy(app, session_options={"autoflush": False})
+migrate = Migrate(app, db, compare_type=True)
 # Setup the Flask-JWT-Simple extension
 jwt = JWTManager(app)
 
@@ -649,7 +649,7 @@ class Data(db.Model):
     """ORM object for cyclist data
     """
     id = db.Column(db.Integer, primary_key=True)
-    location = db.Column(db.String(80), nullable=True)
+    location = db.Column(db.String(), nullable=True)
     date = db.Column(db.Date, nullable=True)
     qty = db.Column(db.Integer, nullable=True)
 
@@ -658,17 +658,17 @@ class Event(db.Model):
     """ORM object for event data
     """
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(80), nullable=True)
-    location = db.Column(db.String(80), nullable=True)
+    name = db.Column(db.String(), nullable=True)
+    location = db.Column(db.String(), nullable=True)
     date = db.Column(db.Date, nullable=True)
     close_date = db.Column(db.Date, nullable=True)
     open_date = db.Column(db.Date, nullable=True)
-    general_description = db.Column(db.String(80), nullable=True)
-    payment_description = db.Column(db.String(80), nullable=True)
-    groups_description = db.Column(db.String(80), nullable=True)
-    googlemaps_link = db.Column(db.String(250), nullable=True)
+    general_description = db.Column(db.Text(), nullable=True)
+    payment_description = db.Column(db.Text(), nullable=True)
+    groups_description = db.Column(db.Text(), nullable=True)
+    googlemaps_link = db.Column(db.Text(), nullable=True)
     paytrail_product = db.Column(db.String(11), nullable=True)
-    email_template = db.Column(db.String(250), nullable=True)
+    email_template = db.Column(db.Text(), nullable=True)
     groups = db.relationship('Group', backref='event',
                              cascade="all, delete, delete-orphan")
 
@@ -678,12 +678,12 @@ class Group(db.Model):
     """
     __tablename__ = "event_group"
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(80), nullable=True)
+    name = db.Column(db.String(), nullable=True)
     distance = db.Column(db.Numeric, nullable=True)
     price_prepay = db.Column(db.Numeric, nullable=True)
     price = db.Column(db.Numeric, nullable=True)
-    product_code = db.Column(db.String(80), nullable=True)
-    number_prefix = db.Column(db.String(80), nullable=True)
+    product_code = db.Column(db.String(), nullable=True)
+    number_prefix = db.Column(db.String(), nullable=True)
     tagrange_start = db.Column(db.Integer, nullable=True)
     tagrange_end = db.Column(db.Integer, nullable=True)
     racenumberrange_start = db.Column(db.Integer, nullable=True)
@@ -699,20 +699,20 @@ class Participant(db.Model):
     """ORM object for participant data
     """
     id = db.Column(db.Integer, primary_key=True)
-    firstname = db.Column(db.String(80), nullable=True)
-    lastname = db.Column(db.String(80), nullable=True)
-    streetaddress = db.Column(db.String(80), nullable=True)
-    zipcode = db.Column(db.String(80), nullable=True)
-    city = db.Column(db.String(80), nullable=True)
-    telephone = db.Column(db.String(80), nullable=True)
-    email = db.Column(db.String(80), nullable=True)
-    club = db.Column(db.String(80), nullable=True, default="")
+    firstname = db.Column(db.String(), nullable=True)
+    lastname = db.Column(db.String(), nullable=True)
+    streetaddress = db.Column(db.String(), nullable=True)
+    zipcode = db.Column(db.String(), nullable=True)
+    city = db.Column(db.String(), nullable=True)
+    telephone = db.Column(db.String(), nullable=True)
+    email = db.Column(db.String(), nullable=True)
+    club = db.Column(db.String(), nullable=True, default="")
     payment_type = db.Column(db.Integer, nullable=True)
     payment_confirmed = db.Column(db.Boolean, nullable=True)
-    memo = db.Column(db.String(250), nullable=True)
+    memo = db.Column(db.String(), nullable=True)
     public = db.Column(db.Boolean, nullable=True)
-    tagnumber = db.Column(db.String(80), nullable=True)
-    number = db.Column(db.String(80), nullable=True)
+    tagnumber = db.Column(db.String(), nullable=True)
+    number = db.Column(db.String(), nullable=True)
     referencenumber = db.Column(db.Integer,  nullable=True)
     group_id = db.Column(db.Integer, db.ForeignKey(
         'event_group.id'), nullable=False)
@@ -722,18 +722,18 @@ class Settings(db.Model):
     """ORM object for settings data
     """
     id = db.Column(db.Integer, primary_key=True)
-    setting_key = db.Column(db.String(80), nullable=True)
-    setting_value = db.Column(db.String(80), nullable=True)
+    setting_key = db.Column(db.String(), nullable=True)
+    setting_value = db.Column(db.String(), nullable=True)
 
 
 class User(db.Model):
     """ORM object for user data
     """
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), nullable=True)
-    password = db.Column(db.String(80), nullable=True)
-    email = db.Column(db.String(80), nullable=True)
-    realname = db.Column(db.String(80), nullable=True)
+    username = db.Column(db.String(), nullable=True)
+    password = db.Column(db.String(), nullable=True)
+    email = db.Column(db.String(), nullable=True)
+    realname = db.Column(db.String(), nullable=True)
 
 
 class Task(db.Model):
@@ -742,8 +742,8 @@ class Task(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     type = db.Column(db.Integer, nullable=True)
     status = db.Column(db.Integer, nullable=True, default=0)
-    target = db.Column(db.String(80), nullable=True)
-    param = db.Column(db.String(80), nullable=True)
+    target = db.Column(db.String(), nullable=True)
+    param = db.Column(db.String(), nullable=True)
     created = db.Column(db.DateTime, nullable=True,
                         default=datetime.datetime.now)
     handled = db.Column(db.DateTime, nullable=True)
