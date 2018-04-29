@@ -627,12 +627,9 @@ def getchronocsv(id):
     csv = "FIRST_NAME,LAST_NAME,CLASS,NUMBER,CITY,SPONSOR,MAKE,CLUB,ENGINE,EMAIL,TRANSPONDER" + "\n"
     for group in event.groups:
         for participant in group.participants:
-            print participant.firstname
             csv = csv + participant.firstname + "," + participant.lastname + \
                 "," + group.name + "," + participant.number + "," + participant.city + ",,," + \
                 participant.club + ",," + participant.email + "," + participant.tagnumber + "\n"
-
-            print csv
     return Response(csv,
                     mimetype="text/csv",
                     headers={"Content-disposition":
