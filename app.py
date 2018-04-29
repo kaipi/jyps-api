@@ -26,6 +26,8 @@ app = Flask(__name__)
 CORS(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = dbstring
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['JWT_EXPIRES	'] = datetime.timedelta(hours=24)
+
 db = SQLAlchemy(app, session_options={"autoflush": False})
 migrate = Migrate(app, db, compare_type=True)
 # Setup the Flask-JWT-Simple extension
@@ -162,11 +164,10 @@ def updateevent(id):
         x = request_data["groups"]
         z = x[i]
         group.name = z["name"]
-        group.current_tag = z["current_tag"]
         group.distance = z["distance"]
         group.number_prefix = z["number_prefix"]
-        group.price = z["price"]
         group.price_prepay = z["price_prepay"]
+        group.price = z["price"]
         group.product_code = z["product_code"]
         group.racenumberrange_start = z["racenumberrange_start"]
         group.racenumberrange_end = z["racenumberrange_end"]
@@ -192,7 +193,7 @@ def oneevent(id):
     groups = []
     for group in event.groups:
         groups.append({"id": group.id, "name": group.name, "distance": simplejson.dumps(Decimal(group.distance)),
-                       "price_prepay": simplejson.dumps(Decimal(group.price_prepay)),  "product_code": group.product_code, "number_prefix": group.number_prefix, "tagrange_start": group.tagrange_start, "tagrange_end": group.tagrange_end,  "racenumberrange_start": group.racenumberrange_start, "racenumberrange_end": group.racenumberrange_end})
+                       "price_prepay": simplejson.dumps(Decimal(group.price_prepay)), "price": simplejson.dumps(Decimal(group.price)), "product_code": group.product_code, "number_prefix": group.number_prefix, "tagrange_start": group.tagrange_start, "tagrange_end": group.tagrange_end,  "racenumberrange_start": group.racenumberrange_start, "racenumberrange_end": group.racenumberrange_end})
     response = ({"id": event.id, "location": event.location,
                  "general_description": event.general_description, "date": event.date, "payment_description": event.payment_description,
                  "groups_description": event.groups_description, "name": event.name, "groups": groups, "email_template": event.email_template, "close_date": event.close_date, "open_date": event.open_date, "paytrail_product": event.paytrail_product, "googlemaps_link": event.googlemaps_link})
@@ -273,7 +274,7 @@ def addparticipant():
     participant = Participant(firstname=request_data["firstname"], lastname=request_data["lastname"], telephone=request_data["telephone"], email=request_data["email"],
                               zipcode=request_data["zip"], club=request_data["club"], streetaddress=request_data[
         "streetaddress"], group_id=request_data["groupid"],
-        number=racenumber, tagnumber=racetagnumber, public=request_data["public"], payment_type=request_data["paymentmethod"])
+        number=racenumber, tagnumber=racetagnumber, public=request_data["public"], payment_type=request_data["paymentmethod"], city=request_data["city"])
     db.session.add(participant)
     db.session.commit()
     db.session.flush()
@@ -346,6 +347,36 @@ def addparticipant():
     db.session.commit()
     response = make_response(json.dumps(
         {"msg": "Added ok", "type": "normal"}), 200)
+    return response
+
+
+@app.route("/api/events/v1/addparticipant_pos", methods=['POST'])
+@jwt_required
+def addparticipant_pos():
+    """Add participant from POS
+
+    Decorators:
+        app
+
+    Returns:
+        String -- Return code
+    """
+    request_data = request.json
+    group = Group.query.get(request_data["groupid"])
+    racenumber = group.number_prefix + str(group.current_racenumber)
+    racetagnumber = group.current_tag
+    group.current_tag = group.current_tag + 1
+    group.current_racenumber = group.current_racenumber + 1
+    db.session.commit()
+    participant = Participant(firstname=request_data["firstname"], lastname=request_data["lastname"], telephone=request_data["telephone"], email=request_data["email"],
+                              zipcode=request_data["zip"], club=request_data["club"], streetaddress=request_data[
+        "streetaddress"], group_id=request_data["groupid"],
+        number=racenumber, tagnumber=racetagnumber, public=request_data["public"], payment_type=request_data["paymentmethod"], payment_confirmed=True, city=request_data["city"])
+    db.session.add(participant)
+    db.session.commit()
+    db.session.flush()
+    response = make_response(json.dumps(
+        {"msg": "Added ok", "type": "normal", "price": str(group.price), "racenumber": str(participant.number)}), 200)
     return response
 
 
@@ -596,10 +627,12 @@ def getchronocsv(id):
     csv = "FIRST_NAME,LAST_NAME,CLASS,NUMBER,CITY,SPONSOR,MAKE,CLUB,ENGINE,EMAIL,TRANSPONDER" + "\n"
     for group in event.groups:
         for participant in group.participants:
-            csv = csv + participant.firstname + "," + \
-                participant.lastname + "," + group.name + "," + participant.number + \
-                "," + participant.city + ",,,,," + participant.email + \
-                "," + participant.tagnumber + "\n"
+            print participant.firstname
+            csv = csv + participant.firstname + "," + participant.lastname + \
+                "," + group.name + "," + participant.number + "," + participant.city + ",,," + \
+                participant.club + ",," + participant.email + "," + participant.tagnumber + "\n"
+
+            print csv
     return Response(csv,
                     mimetype="text/csv",
                     headers={"Content-disposition":
