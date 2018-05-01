@@ -19,7 +19,8 @@ from flask_jwt_simple import (
 from flask_migrate import Migrate
 import bcrypt
 import hashlib
-
+import string
+import random
 from localconfig import jwtkey, dbstring
 
 app = Flask(__name__)
@@ -40,6 +41,13 @@ app.config['JWT_SECRET_KEY'] = jwtkey  # Change this!
 def getSetting(key):
     setting = Settings.query.filter_by(setting_key=key).first()
     return setting.setting_value
+
+
+def password_generator(size=8, chars=string.ascii_letters + string.digits):
+    """
+    Returns a string of random characters
+    """
+    return ''.join(random.choice(chars) for i in range(size))
 
 
 def dateconvert(o):
@@ -503,15 +511,33 @@ def addsettings():
         String -- Return code
     """
     request_data = request.json
-    settings = Participant(
-        key=request_data["key"], value=request_data["value"])
+    settings = Settings(
+        setting_key=request_data["key"], setting_value=request_data["value"])
     db.session.add(settings)
     db.session.commit()
     response = make_response("Setting added", 200)
     return response
 
 
-@app.route("/api/events/v1/settings/<int:id>/update", methods=['PUT'])
+@app.route("/api/events/v1/settings/delete/<int:id>", methods=['DELETE'])
+@jwt_required
+def deletesettings(id):
+    """Delete setting
+
+    Decorators:
+        app
+
+    Returns:
+        String -- Return code
+    """
+    setting = Settings.query.get(id)
+    db.session.delete(setting)
+    db.session.commit()
+    response = make_response("Setting added", 200)
+    return response
+
+
+@app.route("/api/events/v1/settings/update", methods=['POST'])
 @jwt_required
 def updatesettings():
     """update setting
@@ -523,7 +549,7 @@ def updatesettings():
         String -- Return code
     """
     request_data = request.json
-    setting = Settings.query.get(id)
+    setting = Settings.query.get(request_data["id"])
     setting.value = request_data["value"]
     db.session.commit()
     response = make_response("Setting updated", 200)
@@ -566,17 +592,22 @@ def adduser():
         String -- Return code
     """
     request_data = request.json
+    password = password_generator()
+    password_crypted = bcrypt.hashpw(password, bcrypt.gensalt())
     user = User(
-        username=request_data["username"], password=request_data["password"], email=request_data["email"], realname=request_data["realname"])
+        username=request_data["username"], password=password_crypted, email=request_data["email"], realname=request_data["fullname"])
+    task = Task(target=request_data["email"],
+                param="Salasanasi ja kayttajatunnuksesi Jyps Ry:n tapahtumajarjestelmaan on: " + request_data["username"] + "/" + password,  status=0, type=2)
+    db.session.add(task)
     db.session.add(user)
     db.session.commit()
     response = make_response("User added", 200)
     return response
 
 
-@app.route("/api/events/v1/users/delete", methods=['DELETE'])
+@app.route("/api/events/v1/users/delete/<int:id>", methods=['DELETE'])
 @jwt_required
-def deleteuser():
+def deleteuser(id):
     """Delete user
 
     Decorators:
@@ -585,17 +616,16 @@ def deleteuser():
     Returns:
         String -- Delete one User
     """
-    request_data = request.json
-    user = User.query.get(request_data["id"])
+    user = User.query.get(id)
     db.session.delete(user)
     db.session.commit()
     response = make_response("User deleted", 200)
     return response
 
 
-@app.route("/api/events/v1/users/resetpassword", methods=['POST'])
+@app.route("/api/events/v1/users/resetpassword/<int:id>", methods=['POST'])
 @jwt_required
-def resetpassword():
+def resetpassword(id):
     """Reset user password
 
     Decorators:
@@ -604,8 +634,15 @@ def resetpassword():
     Returns:
         OK if resetted 
     """
-    request_data = request.json
-    user = User.query.get(request_data["id"])
+
+    user = User.query.get(id)
+    # generate new password and send it via email
+    password = password_generator()
+    password_crypted = bcrypt.hashpw(password, bcrypt.gensalt())
+    user.password = password_crypted
+    task = Task(target=user.email,
+                param="Salasanasi ja kayttajatunnuksesi Jyps Ry:n tapahtumajarjestelmaan on: " + user.username + "/" + password,  status=0, type=2)
+    db.session.add(task)
     db.session.commit()
     response = make_response("User password reset", 200)
     return response

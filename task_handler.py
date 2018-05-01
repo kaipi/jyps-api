@@ -20,7 +20,19 @@ def handleEmail(task):
        task.handled = datetime.datetime.now()
        db.session.commit()
 
+def handleUserEmail(task):
+    with app.app_context():
+    msg = Message("Tunnuksesi Jyps Ry:n tapahtumajärjestelmään",
+                  sender="noreply@jyps.fi",
+                  recipients=[task.target],
+                  body=task.param)
+    mail.send(msg)
+    task.status = 2
+    task.handled = datetime.datetime.now()
+    db.session.commit()
+
 # mainlooop for taskhandler
+
 
 while True:
     print("Loop")
@@ -30,5 +42,7 @@ while True:
     for task in tasks:
         if task.type == 1:
             handleEmail(task)
+        if task.type == 2:
+            handleUserEmail(task)
     db.session.flush()
     time.sleep(30)
