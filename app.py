@@ -451,7 +451,7 @@ def paymentconfirm():
     participant = Participant.query.filter_by(
         referencenumber=request.args.get('ORDER_NUMBER')).first()
     group = Group.query.get(participant.group_id)
-    if request.args.get('RETURN_AUTHCODE') == hashlib.md5(returndata).hexdigest().upper():
+    if request.args.get('RETURN_AUTHCODE') == hashlib.md5(returndata.encode('utf-8')).hexdigest().upper():
         participant.payment_confirmed = True
         db.session.commit()
         return redirect("https://tapahtumat.jyps.fi/event/" + str(group.event_id) + "/eventinfo/?payment_confirmed=true", code=302)
@@ -593,7 +593,7 @@ def adduser():
     """
     request_data = request.json
     password = password_generator()
-    password_crypted = bcrypt.hashpw(password, bcrypt.gensalt())
+    password_crypted = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
     user = User(
         username=request_data["username"], password=password_crypted, email=request_data["email"], realname=request_data["fullname"])
     task = Task(target=request_data["email"],
@@ -638,7 +638,7 @@ def resetpassword(id):
     user = User.query.get(id)
     # generate new password and send it via email
     password = password_generator()
-    password_crypted = bcrypt.hashpw(password, bcrypt.gensalt())
+    password_crypted = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
     user.password = password_crypted
     task = Task(target=user.email,
                 param="Salasanasi ja kayttajatunnuksesi Jyps Ry:n tapahtumajarjestelmaan on: " + user.username + "/" + password,  status=0, type=2)
