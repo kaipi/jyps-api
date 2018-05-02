@@ -274,7 +274,7 @@ def addparticipant():
     """
     request_data = request.json
     group = Group.query.get(request_data["groupid"])
-    racenumber = group.number_prefix + str(group.current_racenumber)
+    racenumber = group.current_racenumber
     racetagnumber = group.current_tag
     group.current_tag = group.current_tag + 1
     group.current_racenumber = group.current_racenumber + 1
@@ -371,7 +371,7 @@ def addparticipant_pos():
     """
     request_data = request.json
     group = Group.query.get(request_data["groupid"])
-    racenumber = group.number_prefix + str(group.current_racenumber)
+    racenumber = group.current_racenumber
     racetagnumber = group.current_tag
     group.current_tag = group.current_tag + 1
     group.current_racenumber = group.current_racenumber + 1
@@ -384,7 +384,7 @@ def addparticipant_pos():
     db.session.commit()
     db.session.flush()
     response = make_response(json.dumps(
-        {"msg": "Added ok", "type": "normal", "price": str(group.price), "racenumber": str(participant.number)}), 200)
+        {"msg": "Added ok", "type": "normal", "price": str(group.price), "racenumber": group.number_prefix + str(participant.number)}), 200)
     return response
 
 
@@ -424,7 +424,7 @@ def eventparticipants(id):
                 if participant.public == True:
                     participants.append({"id": participant.id, "firstname": participant.firstname,
                                          "lastname": participant.lastname, "group": group.name, "club": participant.club,
-                                         "number": participant.number, "payment_confirmed": participant.payment_confirmed})
+                                         "number": group.number_prefix + str(participant.number), "payment_confirmed": participant.payment_confirmed})
 
         data = json.dumps(participants,  default=dateconvert)
         r = make_response(data)
@@ -593,7 +593,8 @@ def adduser():
     """
     request_data = request.json
     password = password_generator()
-    password_crypted = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+    password_crypted = bcrypt.hashpw(
+        password.encode('utf-8'), bcrypt.gensalt())
     user = User(
         username=request_data["username"], password=password_crypted, email=request_data["email"], realname=request_data["fullname"])
     task = Task(target=request_data["email"],
@@ -638,7 +639,8 @@ def resetpassword(id):
     user = User.query.get(id)
     # generate new password and send it via email
     password = password_generator()
-    password_crypted = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+    password_crypted = bcrypt.hashpw(
+        password.encode('utf-8'), bcrypt.gensalt())
     user.password = password_crypted
     task = Task(target=user.email,
                 param="Salasanasi ja kayttajatunnuksesi Jyps Ry:n tapahtumajarjestelmaan on: " + user.username + "/" + password,  status=0, type=2)
@@ -664,9 +666,9 @@ def getchronocsv(id):
     csv = "FIRST_NAME,LAST_NAME,CLASS,NUMBER,CITY,SPONSOR,MAKE,CLUB,ENGINE,EMAIL,TRANSPONDER" + "\n"
     for group in event.groups:
         for participant in group.participants:
-            csv = csv + participant.firstname + "," + participant.lastname + \
-                "," + group.name + "," + participant.number + "," + participant.city + ",,," + \
-                participant.club + ",," + participant.email + "," + participant.tagnumber + "\n"
+            csv = csv + participant.firstname + ";" + participant.lastname + \
+                ";" + group.name + "(" + group.number_prefix + ");" + str(participant.number) + ";" + participant.city + ";;;" + \
+                participant.club + ";;" + participant.email + ";" + participant.tagnumber + "\n"
     return Response(csv,
                     mimetype="text/csv",
                     headers={"Content-disposition":
@@ -787,7 +789,7 @@ class Participant(db.Model):
     memo = db.Column(db.String(), nullable=True)
     public = db.Column(db.Boolean, nullable=True)
     tagnumber = db.Column(db.String(), nullable=True)
-    number = db.Column(db.String(), nullable=True)
+    number = db.Column(db.Integer, nullable=True)
     referencenumber = db.Column(db.Integer,  nullable=True)
     group_id = db.Column(db.Integer, db.ForeignKey(
         'event_group.id'), nullable=False)
