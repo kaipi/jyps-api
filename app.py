@@ -200,8 +200,8 @@ def oneevent(id):
     event = Event.query.get(id)
     groups = []
     for group in event.groups:
-        groups.append({"id": group.id, "name": group.name, "distance": simplejson.dumps(Decimal(group.distance)),
-                       "price_prepay": simplejson.dumps(Decimal(group.price_prepay)), "price": simplejson.dumps(Decimal(group.price)), "product_code": group.product_code, "number_prefix": group.number_prefix, "tagrange_start": group.tagrange_start, "tagrange_end": group.tagrange_end,  "racenumberrange_start": group.racenumberrange_start, "racenumberrange_end": group.racenumberrange_end})
+        groups.append({"id": group.id, "name": group.name, "distance": simplejson.dumps(group.distance),
+                       "price_prepay": simplejson.dumps(group.price_prepay), "price": simplejson.dumps(group.price), "product_code": group.product_code, "number_prefix": group.number_prefix, "tagrange_start": group.tagrange_start, "tagrange_end": group.tagrange_end,  "racenumberrange_start": group.racenumberrange_start, "racenumberrange_end": group.racenumberrange_end})
     response = ({"id": event.id, "location": event.location,
                  "general_description": event.general_description, "date": event.date, "payment_description": event.payment_description,
                  "groups_description": event.groups_description, "name": event.name, "groups": groups, "email_template": event.email_template, "close_date": event.close_date, "open_date": event.open_date, "paytrail_product": event.paytrail_product, "googlemaps_link": event.googlemaps_link})
@@ -705,9 +705,10 @@ def addgroup(id):
        200 if was added ok
     """
     request_data = request.json
+    print request_data
     event = Event.query.get(id)
     group = Group(name=request_data["name"], distance=request_data["distance"], number_prefix=request_data["number_prefix"],
-                  price_prepay=request_data["price_prepay"], product_code=request_data[
+                  price_prepay=Decimal(request_data["price_prepay"]),price=Decimal(request_data["price"]), product_code=request_data[
                       "product_code"], racenumberrange_start=int(request_data["racenumberrange_start"]),
                   racenumberrange_end=int(request_data["racenumberrange_end"]), tagrange_start=int(
                       request_data["tagrange_start"]),
