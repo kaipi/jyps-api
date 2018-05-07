@@ -705,14 +705,13 @@ def addgroup(id):
        200 if was added ok
     """
     request_data = request.json
-    print request_data
     event = Event.query.get(id)
     group = Group(name=request_data["name"], distance=request_data["distance"], number_prefix=request_data["number_prefix"],
                   price_prepay=Decimal(request_data["price_prepay"]),price=Decimal(request_data["price"]), product_code=request_data[
                       "product_code"], racenumberrange_start=int(request_data["racenumberrange_start"]),
                   racenumberrange_end=int(request_data["racenumberrange_end"]), tagrange_start=int(
                       request_data["tagrange_start"]),
-                  tagrange_end=int(request_data["tagrange_end"]), current_tag=int(request_data["tagrange_start"]))
+                  tagrange_end=int(request_data["tagrange_end"]), current_tag=int(request_data["tagrange_start"]),current_racenumber=int(request_data["racenumberrange_start"]))
     event.groups.append(group)
     db.session.commit()
     response = make_response("Group added", 200)
