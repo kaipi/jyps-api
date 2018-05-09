@@ -379,7 +379,7 @@ def addparticipant_pos():
     participant = Participant(firstname=request_data["firstname"], lastname=request_data["lastname"], telephone=request_data["telephone"], email=request_data["email"],
                               zipcode=request_data["zip"], club=request_data["club"], streetaddress=request_data[
         "streetaddress"], group_id=request_data["groupid"],
-        number=racenumber, tagnumber=racetagnumber, public=request_data["public"], payment_type=request_data["paymentmethod"], payment_confirmed=True, city=request_data["city"])
+        number=racenumber, tagnumber=racetagnumber, public=request_data["public"], payment_type=request_data["paymentmethod"], payment_confirmed=True, city=request_data["city"],sport_voucher=request_data["sport_voucher"],sport_voucher_name=request_data["sport_voucher_name"])
     db.session.add(participant)
     db.session.commit()
     db.session.flush()
@@ -740,12 +740,12 @@ class Event(db.Model):
     date = db.Column(db.Date, nullable=True)
     close_date = db.Column(db.Date, nullable=True)
     open_date = db.Column(db.Date, nullable=True)
-    general_description = db.Column(db.Text(), nullable=True)
-    payment_description = db.Column(db.Text(), nullable=True)
-    groups_description = db.Column(db.Text(), nullable=True)
-    googlemaps_link = db.Column(db.Text(), nullable=True)
+    general_description = db.Column(db.Text, nullable=True)
+    payment_description = db.Column(db.Text, nullable=True)
+    groups_description = db.Column(db.Text, nullable=True)
+    googlemaps_link = db.Column(db.Text, nullable=True)
     paytrail_product = db.Column(db.String(11), nullable=True)
-    email_template = db.Column(db.Text(), nullable=True)
+    email_template = db.Column(db.Text, nullable=True)
     groups = db.relationship('Group', backref='event',
                              cascade="all, delete, delete-orphan")
 
@@ -791,6 +791,8 @@ class Participant(db.Model):
     tagnumber = db.Column(db.String(), nullable=True)
     number = db.Column(db.Integer, nullable=True)
     referencenumber = db.Column(db.Integer,  nullable=True)
+    sport_voucher = db.Column(db.Boolean, nullable=True)
+    sport_voucher_name = db.Column(db.Text, nullable=True)
     group_id = db.Column(db.Integer, db.ForeignKey(
         'event_group.id'), nullable=False)
 
