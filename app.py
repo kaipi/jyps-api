@@ -181,6 +181,9 @@ def updateevent(id):
         group.racenumberrange_end = z["racenumberrange_end"]
         group.tagrange_end = z["tagrange_end"]
         group.tagrange_start = z["tagrange_start"]
+        #if tagranges are modified, also start has to be updated        
+        group.current_racenumber = z["racenumberrange_start"]
+        group.current_tagnumber = z["tagrange_start"]
         i = i + 1
     db.session.commit()
     response = make_response("Event updated", 200)
