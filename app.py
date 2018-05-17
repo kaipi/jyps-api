@@ -674,7 +674,7 @@ def getchronocsv(id):
     """
 
     event = Event.query.get(id)
-    csv = "FIRST_NAME,LAST_NAME,CLASS,NUMBER,CITY,SPONSOR,MAKE,CLUB,ENGINE,EMAIL,TRANSPONDER" + "\n"
+    csv = "FIRST_NAME;LAST_NAME;CLASS;NUMBER;CITY;SPONSOR;MAKE;CLUB;ENGINE;EMAIL;TRANSPONDER" + "\n"
     for group in event.groups:
         for participant in group.participants:
             csv = csv + participant.firstname + ";" + participant.lastname + \
