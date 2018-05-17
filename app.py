@@ -292,11 +292,14 @@ def addparticipant():
     db.session.flush()
     group = Group.query.get(participant.group_id)
     event = Event.query.get(group.event_id)
+    price = group.price_prepay
+    if request_data["jyps_member"] == True:
+        price = group.price_prepay - group.discount
     # set reference
     participant.referencenumber = str(
         participant.id) + str(group.id) + str(event.id)
     db.session.commit()
-
+    
     # if payment is to paytrail
     if participant.payment_type == 1:
         paytrail_json = {
@@ -330,7 +333,7 @@ def addparticipant():
                         "title": group.name,
                         "code": event.paytrail_product,
                         "amount": 1,
-                        "price": simplejson.dumps(Decimal(group.price_prepay), use_decimal=True),
+                        "price": simplejson.dumps(Decimal(price), use_decimal=True),
                         "vat": "24.00",
                         "discount": "0.00",
                         "type": "1"
