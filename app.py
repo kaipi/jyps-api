@@ -182,8 +182,8 @@ def updateevent(id):
         group.tagrange_end = z["tagrange_end"]
         group.tagrange_start = z["tagrange_start"]
         #if tagranges are modified, also start has to be updated        
-        group.current_racenumber = z["racenumberrange_start"]
-        group.current_tagnumber = z["tagrange_start"]
+        group.current_racenumber = z["current_racenumber"]
+        group.current_tag = z["current_tag"]
         group.discount=z["discount"]
         i = i + 1
     db.session.commit()
@@ -205,7 +205,9 @@ def oneevent(id):
     groups = []
     for group in event.groups:
         groups.append({"id": group.id, "name": group.name, "distance": simplejson.dumps(group.distance),
-                       "price_prepay": simplejson.dumps(group.price_prepay), "price": simplejson.dumps(group.price), "product_code": group.product_code, "number_prefix": group.number_prefix, "tagrange_start": group.tagrange_start, "tagrange_end": group.tagrange_end,  "racenumberrange_start": group.racenumberrange_start, "racenumberrange_end": group.racenumberrange_end,"discount":simplejson.dumps(group.discount)})
+                       "price_prepay": simplejson.dumps(group.price_prepay), "price": simplejson.dumps(group.price), "product_code": group.product_code, "number_prefix": group.number_prefix,   
+                       "tagrange_start": group.tagrange_start, "tagrange_end": group.tagrange_end,  "racenumberrange_start": group.racenumberrange_start, "racenumberrange_end": group.racenumberrange_end,
+                       "discount":simplejson.dumps(group.discount),"current_racenumber":group.current_racenumber,"current_tag":group.current_tag})
     response = ({"id": event.id, "location": event.location,
                  "general_description": event.general_description, "date": event.date, "payment_description": event.payment_description,
                  "groups_description": event.groups_description, "name": event.name, "groups": groups, "email_template": event.email_template, "close_date": event.close_date, "open_date": event.open_date, "paytrail_product": event.paytrail_product, "googlemaps_link": event.googlemaps_link})
