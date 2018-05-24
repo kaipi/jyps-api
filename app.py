@@ -181,10 +181,10 @@ def updateevent(id):
         group.racenumberrange_end = z["racenumberrange_end"]
         group.tagrange_end = z["tagrange_end"]
         group.tagrange_start = z["tagrange_start"]
-        #if tagranges are modified, also start has to be updated        
+        # if tagranges are modified, also start has to be updated
         group.current_racenumber = z["current_racenumber"]
         group.current_tag = z["current_tag"]
-        group.discount=z["discount"]
+        group.discount = z["discount"]
         i = i + 1
     db.session.commit()
     response = make_response("Event updated", 200)
@@ -205,9 +205,9 @@ def oneevent(id):
     groups = []
     for group in event.groups:
         groups.append({"id": group.id, "name": group.name, "distance": simplejson.dumps(group.distance),
-                       "price_prepay": simplejson.dumps(group.price_prepay), "price": simplejson.dumps(group.price), "product_code": group.product_code, "number_prefix": group.number_prefix,   
+                       "price_prepay": simplejson.dumps(group.price_prepay), "price": simplejson.dumps(group.price), "product_code": group.product_code, "number_prefix": group.number_prefix,
                        "tagrange_start": group.tagrange_start, "tagrange_end": group.tagrange_end,  "racenumberrange_start": group.racenumberrange_start, "racenumberrange_end": group.racenumberrange_end,
-                       "discount":simplejson.dumps(group.discount),"current_racenumber":group.current_racenumber,"current_tag":group.current_tag})
+                       "discount": simplejson.dumps(group.discount), "current_racenumber": group.current_racenumber, "current_tag": group.current_tag})
     response = ({"id": event.id, "location": event.location,
                  "general_description": event.general_description, "date": event.date, "payment_description": event.payment_description,
                  "groups_description": event.groups_description, "name": event.name, "groups": groups, "email_template": event.email_template, "close_date": event.close_date, "open_date": event.open_date, "paytrail_product": event.paytrail_product, "googlemaps_link": event.googlemaps_link})
@@ -239,7 +239,7 @@ def createevent():
                       number_prefix=item["number_prefix"], tagrange_start=int(
                           item["tagrange_start"]),
                       tagrange_end=int(item["tagrange_end"]), current_tag=int(item["tagrange_start"]), current_racenumber=int(item["racenumberrange_start"]),
-                      racenumberrange_end=int(item["racenumberrange_end"]), racenumberrange_start=int(item["racenumberrange_start"],discount=Decimal(item["discount"])))
+                      racenumberrange_end=int(item["racenumberrange_end"]), racenumberrange_start=int(item["racenumberrange_start"], discount=Decimal(item["discount"])))
         event.groups.append(group)
 
     db.session.add(event)
@@ -288,7 +288,7 @@ def addparticipant():
     participant = Participant(firstname=request_data["firstname"], lastname=request_data["lastname"], telephone=request_data["telephone"], email=request_data["email"],
                               zipcode=request_data["zip"], club=request_data["club"], streetaddress=request_data[
         "streetaddress"], group_id=request_data["groupid"],
-        number=racenumber, tagnumber=racetagnumber, public=request_data["public"], payment_type=request_data["paymentmethod"], city=request_data["city"],birth_year=request_data["birth_year"],team=request_data["team"],jyps_member=request_data["jyps_member"])
+        number=racenumber, tagnumber=racetagnumber, public=request_data["public"], payment_type=request_data["paymentmethod"], city=request_data["city"], birth_year=request_data["birth_year"], team=request_data["team"], jyps_member=request_data["jyps_member"])
     db.session.add(participant)
     db.session.commit()
     db.session.flush()
@@ -301,7 +301,7 @@ def addparticipant():
     participant.referencenumber = str(
         participant.id) + str(group.id) + str(event.id)
     db.session.commit()
-    
+
     # if payment is to paytrail
     if participant.payment_type == 1:
         paytrail_json = {
@@ -388,7 +388,7 @@ def addparticipant_pos():
     participant = Participant(firstname=request_data["firstname"], lastname=request_data["lastname"], telephone=request_data["telephone"], email=request_data["email"],
                               zipcode=request_data["zip"], club=request_data["club"], streetaddress=request_data[
         "streetaddress"], group_id=request_data["groupid"],
-        number=racenumber, tagnumber=racetagnumber, public=request_data["public"], payment_type=request_data["paymentmethod"], payment_confirmed=True, city=request_data["city"],sport_voucher=request_data["sport_voucher"],sport_voucher_name=request_data["sport_voucher_name"],birth_year=request_data["birth_year"],team=request_data["team"],jyps_member=request_data["jyps_member"])
+        number=racenumber, tagnumber=racetagnumber, public=request_data["public"], payment_type=request_data["paymentmethod"], payment_confirmed=True, city=request_data["city"], sport_voucher=request_data["sport_voucher"], sport_voucher_name=request_data["sport_voucher_name"], birth_year=request_data["birth_year"], team=request_data["team"], jyps_member=request_data["jyps_member"])
     db.session.add(participant)
     db.session.commit()
     db.session.flush()
@@ -433,12 +433,13 @@ def eventparticipants(id):
         event = Event.query.get(id)
         participants = []
         for group in event.groups:
+            onegroup = []
             for participant in group.participants:
                 if participant.public == True:
-                    participants.append({"id": participant.id, "firstname": participant.firstname,
-                                         "lastname": participant.lastname, "group": group.name, "club": participant.club,
-                                         "number": group.number_prefix + str(participant.number), "payment_confirmed": participant.payment_confirmed,"team": participant.team})
-
+                    onegroup.append({"id": participant.id, "firstname": participant.firstname,
+                                     "lastname": participant.lastname, "group": group.name, "club": participant.club,
+                                     "number": group.number_prefix + str(participant.number), "payment_confirmed": participant.payment_confirmed, "team": participant.team})
+            participants.append(onegroup)
         data = json.dumps(participants,  default=dateconvert)
         r = make_response(data)
         r.headers['Content-Type'] = 'application/json'
@@ -681,7 +682,8 @@ def getchronocsv(id):
         for participant in group.participants:
             csv = csv + participant.firstname + ";" + participant.lastname + \
                 ";" + group.name + "(" + group.number_prefix + ");" + str(participant.number) + ";" + participant.city + ";;;" + \
-                participant.club + "/" + participant.team + ";;" + participant.email + ";" + participant.tagnumber + "\n"
+                participant.club + "/" + participant.team + ";;" + \
+                participant.email + ";" + participant.tagnumber + "\n"
     return Response(csv,
                     mimetype="text/csv",
                     headers={"Content-disposition":
@@ -720,11 +722,11 @@ def addgroup(id):
     request_data = request.json
     event = Event.query.get(id)
     group = Group(name=request_data["name"], distance=request_data["distance"], number_prefix=request_data["number_prefix"],
-                  price_prepay=Decimal(request_data["price_prepay"]),price=Decimal(request_data["price"]), product_code=request_data[
+                  price_prepay=Decimal(request_data["price_prepay"]), price=Decimal(request_data["price"]), product_code=request_data[
                       "product_code"], racenumberrange_start=int(request_data["racenumberrange_start"]),
                   racenumberrange_end=int(request_data["racenumberrange_end"]), tagrange_start=int(
                       request_data["tagrange_start"]),
-                  tagrange_end=int(request_data["tagrange_end"]), current_tag=int(request_data["tagrange_start"]),current_racenumber=int(request_data["racenumberrange_start"]))
+                  tagrange_end=int(request_data["tagrange_end"]), current_tag=int(request_data["tagrange_start"]), current_racenumber=int(request_data["racenumberrange_start"]))
     event.groups.append(group)
     db.session.commit()
     response = make_response("Group added", 200)
@@ -780,7 +782,7 @@ class Group(db.Model):
     racenumberrange_end = db.Column(db.Integer, nullable=True)
     current_tag = db.Column(db.Integer, nullable=True)
     current_racenumber = db.Column(db.Integer, nullable=True)
-    discount =  db.Column(db.Numeric, nullable=True)
+    discount = db.Column(db.Numeric, nullable=True)
     event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
     participants = db.relationship('Participant', backref='event_group',
                                    cascade="all, delete, delete-orphan")
