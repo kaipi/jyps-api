@@ -280,15 +280,10 @@ def addparticipant():
     """
     request_data = request.json
     group = Group.query.get(request_data["groupid"])
-    racenumber = group.current_racenumber
-    racetagnumber = group.current_tag
-    group.current_tag = group.current_tag + 1
-    group.current_racenumber = group.current_racenumber + 1
     db.session.commit()
     participant = Participant(firstname=request_data["firstname"], lastname=request_data["lastname"], telephone=request_data["telephone"], email=request_data["email"],
                               zipcode=request_data["zip"], club=request_data["club"], streetaddress=request_data[
-        "streetaddress"], group_id=request_data["groupid"],
-        number=racenumber, tagnumber=racetagnumber, public=request_data["public"], payment_type=request_data["paymentmethod"], city=request_data["city"], birth_year=request_data["birth_year"], team=request_data["team"], jyps_member=request_data["jyps_member"])
+        "streetaddress"], group_id=request_data["groupid"], public=request_data["public"], payment_type=request_data["paymentmethod"], city=request_data["city"], birth_year=request_data["birth_year"], team=request_data["team"], jyps_member=request_data["jyps_member"])
     db.session.add(participant)
     db.session.commit()
     db.session.flush()
@@ -466,7 +461,14 @@ def paymentconfirm():
         referencenumber=request.args.get('ORDER_NUMBER')).first()
     group = Group.query.get(participant.group_id)
     if request.args.get('RETURN_AUTHCODE') == hashlib.md5(returndata.encode('utf-8')).hexdigest().upper():
+        # racenumbers only if payment is ok
+        racenumber = group.current_racenumber
+        racetagnumber = group.current_tag
+        group.current_tag = group.current_tag + 1
+        group.current_racenumber = group.current_racenumber + 1
         participant.payment_confirmed = True
+        participant.number = racenumber
+        participant.tagnumber = racetagnumber
         db.session.commit()
         return redirect("https://tapahtumat.jyps.fi/event/" + str(group.event_id) + "/eventinfo/?payment_confirmed=true", code=302)
     else:
