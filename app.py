@@ -684,10 +684,11 @@ def getchronocsv(id):
     csv = "FIRST_NAME;LAST_NAME;CLASS;NUMBER;CITY;SPONSOR;MAKE;CLUB;ENGINE;EMAIL;TRANSPONDER" + "\n"
     for group in event.groups:
         for participant in group.participants:
-            csv = csv + participant.firstname + ";" + participant.lastname + \
-                ";" + group.name + "(" + group.number_prefix + ");" + str(participant.number) + ";" + participant.city + ";;;" + \
-                participant.club + "/" + participant.team + ";;" + \
-                participant.email + ";" + participant.tagnumber + "\n"
+            if participant.payment_confirmed == True:
+                csv = csv + participant.firstname + ";" + participant.lastname + \
+                    ";" + group.name + "(" + group.number_prefix + ");" + str(participant.number) + ";" + participant.city + ";;;" + \
+                    participant.club + "/" + participant.team + ";;" + \
+                    participant.email + ";" + participant.tagnumber + "\n"
     return Response(csv,
                     mimetype="text/csv",
                     headers={"Content-disposition":
