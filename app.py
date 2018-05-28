@@ -685,9 +685,12 @@ def getchronocsv(id):
     for group in event.groups:
         for participant in group.participants:
             if participant.payment_confirmed == True:
+                participant_club_team_separator = "/"
+                if participant.club == "" or participant.team == "":
+                    participant_club_team_separator = ""
                 csv = csv + participant.firstname + ";" + participant.lastname + \
                     ";" + group.name + "(" + group.number_prefix + ");" + str(participant.number) + ";" + participant.city + ";;;" + \
-                    participant.club + "/" + participant.team + ";;" + \
+                    participant.club + participant_club_team_separator + participant.team + ";;" + \
                     participant.email + ";" + participant.tagnumber + "\n"
     return Response(csv,
                     mimetype="text/csv",
