@@ -346,9 +346,6 @@ def addparticipant():
             json=paytrail_json)
         response = make_response(json.dumps(paytrail_response.json()), 200)
         response.headers['Content-Type'] = 'application/json'
-        task = Task(target=participant.email,
-                    param=event.email_template,  status=0, type=1)
-        db.session.add(task)
         db.session.commit()
         return response
 
@@ -430,7 +427,7 @@ def eventparticipants(id):
         for group in event.groups:
             onegroup = []
             for participant in group.participants:
-                if participant.public == True:
+                if participant.public == True and participant.payment_confirmed == True:
                     onegroup.append({"id": participant.id, "firstname": participant.firstname,
                                      "lastname": participant.lastname, "group": group.name, "club": participant.club,
                                      "number": group.number_prefix + str(participant.number), "payment_confirmed": participant.payment_confirmed, "team": participant.team})
@@ -460,6 +457,7 @@ def paymentconfirm():
     participant = Participant.query.filter_by(
         referencenumber=request.args.get('ORDER_NUMBER')).first()
     group = Group.query.get(participant.group_id)
+    event = Event.query.get(group.event_id)
     if request.args.get('RETURN_AUTHCODE') == hashlib.md5(returndata.encode('utf-8')).hexdigest().upper():
         # racenumbers only if payment is ok
         racenumber = group.current_racenumber
@@ -469,6 +467,10 @@ def paymentconfirm():
         participant.payment_confirmed = True
         participant.number = racenumber
         participant.tagnumber = racetagnumber
+
+        task = Task(target=participant.email,
+                    param=event.email_template,  status=0, type=1)
+        db.session.add(task)
         db.session.commit()
         return redirect("https://tapahtumat.jyps.fi/event/" + str(group.event_id) + "/eventinfo/?payment_confirmed=true", code=302)
     else:
