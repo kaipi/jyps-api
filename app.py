@@ -374,13 +374,13 @@ def addparticipant_pos():
     group = Group.query.get(request_data["groupid"])
     racenumber = group.current_racenumber
     racetagnumber = group.current_tag
-    group.current_tag = group.current_tag + 1
-    group.current_racenumber = group.current_racenumber + 1
     db.session.commit()
     participant = Participant(firstname=request_data["firstname"], lastname=request_data["lastname"], telephone=request_data["telephone"], email=request_data["email"],
                               zipcode=request_data["zip"], club=request_data["club"], streetaddress=request_data[
         "streetaddress"], group_id=request_data["groupid"],
         number=racenumber, tagnumber=racetagnumber, public=request_data["public"], payment_type=request_data["paymentmethod"], payment_confirmed=True, city=request_data["city"], sport_voucher=request_data["sport_voucher"], sport_voucher_name=request_data["sport_voucher_name"], birth_year=request_data["birth_year"], team=request_data["team"], jyps_member=request_data["jyps_member"])
+    group.current_tag = group.current_tag + 1
+    group.current_racenumber = group.current_racenumber + 1
     db.session.add(participant)
     db.session.commit()
     db.session.flush()
@@ -462,12 +462,11 @@ def paymentconfirm():
         # racenumbers only if payment is ok
         racenumber = group.current_racenumber
         racetagnumber = group.current_tag
-        group.current_tag = group.current_tag + 1
-        group.current_racenumber = group.current_racenumber + 1
         participant.payment_confirmed = True
         participant.number = racenumber
         participant.tagnumber = racetagnumber
-
+        group.current_tag = group.current_tag + 1
+        group.current_racenumber = group.current_racenumber + 1
         task = Task(target=participant.email,
                     param=event.email_template,  status=0, type=1)
         db.session.add(task)
