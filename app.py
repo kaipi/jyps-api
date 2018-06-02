@@ -458,7 +458,7 @@ def paymentconfirm():
         referencenumber=request.args.get('ORDER_NUMBER')).first()
     group = Group.query.get(participant.group_id)
     event = Event.query.get(group.event_id)
-    if request.args.get('RETURN_AUTHCODE') == hashlib.md5(returndata.encode('utf-8')).hexdigest().upper():
+    if participant.payment_confirmed != True and request.args.get('RETURN_AUTHCODE') == hashlib.md5(returndata.encode('utf-8')).hexdigest().upper():
         # racenumbers only if payment is ok
         racenumber = group.current_racenumber
         racetagnumber = group.current_tag
