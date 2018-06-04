@@ -331,7 +331,7 @@ def addparticipant():
                         "code": event.paytrail_product,
                         "amount": 1,
                         "price": simplejson.dumps(Decimal(price), use_decimal=True),
-                        "vat": "24.00",
+                        "vat": "0.00",
                         "discount": "0.00",
                         "type": "1"
                     }
