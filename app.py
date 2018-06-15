@@ -440,6 +440,35 @@ def eventparticipants(id):
         return make_response("No participants found", 503)
 
 
+@app.route("/api/events/v1/events/<int:id>/participants_pos", methods=['GET'])
+@jwt_required
+def eventparticipants_pos(id):
+    """Get participants of event
+
+    Decorators:
+        app
+
+    Returns:
+        json -- json object of events participants
+    """
+    try:
+        event = Event.query.get(id)
+        participants = []
+        for group in event.groups:
+            onegroup = []
+            for participant in group.participants:
+                onegroup.append({"id": participant.id, "firstname": participant.firstname,
+                                 "lastname": participant.lastname, "group": group.name, "club": participant.club,
+                                 "number": group.number_prefix + str(participant.number), "payment_confirmed": participant.payment_confirmed, "team": participant.team})
+            participants.append(onegroup)
+        data = json.dumps(participants,  default=dateconvert)
+        r = make_response(data)
+        r.headers['Content-Type'] = 'application/json'
+        return r
+    except AttributeError:
+        return make_response("No participants found", 503)
+
+
 @app.route("/api/events/v1/paymentconfirm", methods=['GET'])
 def paymentconfirm():
     """Return from succesfull payment + notification url
