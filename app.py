@@ -458,7 +458,8 @@ def eventparticipants_pos(id):
             onegroup = []
             for participant in group.participants:
                 onegroup.append({"id": participant.id, "firstname": participant.firstname,
-                                 "lastname": participant.lastname, "group": group.name, "club": participant.club,
+                                 "lastname": participant.lastname, "group": group.name, "club": participant.club, "streetaddress": participant.streetaddress, "email": participant.email,
+                                 "telephone": participant.telephone, "zipcode": participant.zipcode, "city": participant.city,
                                  "number": group.number_prefix + str(participant.number), "payment_confirmed": participant.payment_confirmed, "team": participant.team})
             participants.append(onegroup)
         data = json.dumps(participants,  default=dateconvert)
