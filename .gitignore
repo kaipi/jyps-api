@@ -12,7 +12,6 @@ _mailinglist
 .tox
 .cache/
 .idea/
-.vscode/
 localconfig.py
 # Coverage reports
 htmlcov
