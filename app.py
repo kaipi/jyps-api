@@ -833,7 +833,9 @@ def approvevoucher(participantid):
                 param=event.sport_voucher_confirmed_email + " " + event.name + " !",  status=0, type=3)
     db.session.add(task)
     db.session.commit()
-
+    response = make_response("Groups copied", 200)
+    return response
+    
 @app.route("/api/events/v1/sportvoucherpending/<int:eventid>", methods=['GET'])
 @jwt_required
 def pendingvouchers(eventid):
