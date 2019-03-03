@@ -45,4 +45,5 @@ for task in tasks:
         handleEmail(task)
     if task.type == 2:
         handleUserEmail(task)
+
     db.session.flush()

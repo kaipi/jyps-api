@@ -12,7 +12,6 @@ import simplejson
 from requests.auth import HTTPBasicAuth
 from decimal import *
 from functools import wraps
-
 from flask_jwt_simple import (
     JWTManager, jwt_required, create_jwt, get_jwt_identity
 )
@@ -165,7 +164,10 @@ def updateevent(id):
     event.open_date = request_data["open_date"]
     event.payment_description = request_data["payment_description"],
     event.paytrail_product = request_data["paytrail_product"],
-    event.googlemaps_link = request_data["googlemaps_link"]
+    event.googlemaps_link = request_data["googlemaps_link"],
+    #event.event_active = request_data["event_active"],
+    event.sport_voucher_email = request_data["sport_voucher_email"],
+    event.sport_voucher_confirmed_email = request_data["sport_voucher_confirmed_email"]
     i = 0
     for group in event.groups:
         # TODO: Tidy this crap up
@@ -202,6 +204,10 @@ def oneevent(id):
         json -- json object of one event
     """
     event = Event.query.get(id)
+    active = False
+
+    if event.close_date > datetime.date.today():
+        active = True
     groups = []
     for group in event.groups:
         groups.append({"id": group.id, "name": group.name, "distance": simplejson.dumps(group.distance),
@@ -210,7 +216,7 @@ def oneevent(id):
                        "discount": simplejson.dumps(group.discount), "current_racenumber": group.current_racenumber, "current_tag": group.current_tag})
     response = ({"id": event.id, "location": event.location,
                  "general_description": event.general_description, "date": event.date, "payment_description": event.payment_description,
-                 "groups_description": event.groups_description, "name": event.name, "groups": groups, "email_template": event.email_template, "close_date": event.close_date, "open_date": event.open_date, "paytrail_product": event.paytrail_product, "googlemaps_link": event.googlemaps_link})
+                 "groups_description": event.groups_description, "name": event.name, "groups": groups, "email_template": event.email_template, "close_date": event.close_date, "open_date": event.open_date, "paytrail_product": event.paytrail_product, "googlemaps_link": event.googlemaps_link, "event_active": event.event_active,"sport_voucher_email":event.sport_voucher_email,"sport_voucher_confirmed_email":event.sport_voucher_confirmed_email})
     data = json.dumps(response,  default=dateconvert)
     r = make_response(data)
     r.headers['Content-Type'] = 'application/json'
@@ -282,7 +288,8 @@ def addparticipant():
     db.session.commit()
     participant = Participant(firstname=request_data["firstname"], lastname=request_data["lastname"], telephone=request_data["telephone"], email=request_data["email"],
                               zipcode=request_data["zip"], club=request_data["club"], streetaddress=request_data[
-        "streetaddress"], group_id=request_data["groupid"], public=request_data["public"], payment_type=request_data["paymentmethod"], city=request_data["city"], birth_year=request_data["birth_year"], team=request_data["team"], jyps_member=request_data["jyps_member"])
+        "streetaddress"], group_id=request_data["groupid"], public=request_data["public"], payment_type=request_data["paymentmethod"], city=request_data["city"], birth_year=request_data["birth_year"], team=request_data["team"], jyps_member=request_data["jyps_member"]
+        ,sport_voucher_name=request_data["sport_voucher_name"],payment_confirmed=False)
     db.session.add(participant)
     db.session.commit()
     db.session.flush()
@@ -347,6 +354,10 @@ def addparticipant():
         response.headers['Content-Type'] = 'application/json'
         db.session.commit()
         return response
+    #payment is sport voucher
+    if participant.payment_type == 2:
+       task = Task(target=participant.email, param=event.sport_voucher_email,
+                status=0, type=1)
 
     task = Task(target=participant.email, param=event.email_template,
                 status=0, type=1)
@@ -377,7 +388,7 @@ def addparticipant_pos():
     participant = Participant(firstname=request_data["firstname"], lastname=request_data["lastname"], telephone=request_data["telephone"], email=request_data["email"],
                               zipcode=request_data["zip"], club=request_data["club"], streetaddress=request_data[
         "streetaddress"], group_id=request_data["groupid"],
-        number=racenumber, tagnumber=racetagnumber, public=request_data["public"], payment_type=request_data["paymentmethod"], payment_confirmed=True, city=request_data["city"], sport_voucher=request_data["sport_voucher"], sport_voucher_name=request_data["sport_voucher_name"], birth_year=request_data["birth_year"], team=request_data["team"], jyps_member=request_data["jyps_member"])
+        number=racenumber, tagnumber=racetagnumber, public=request_data["public"], payment_type=request_data["paymentmethod"], payment_confirmed=True, city=request_data["city"],  sport_voucher_name=request_data["sport_voucher_name"], birth_year=request_data["birth_year"], team=request_data["team"], jyps_member=request_data["jyps_member"])
     group.current_tag = group.current_tag + 1
     group.current_racenumber = group.current_racenumber + 1
     db.session.add(participant)
@@ -769,6 +780,82 @@ def addgroup(id):
     return response
 
 
+@app.route("/api/events/v1/copygroups/<int:targetid>/<int:sourceid>", methods=['GET'])
+@jwt_required
+def copygroups(targetid, sourceid):
+    """copy groups to existing event
+
+     Decorators:
+         app
+
+     Returns:
+        200 if was copied ok
+     """
+    source_event = Event.query.get(sourceid)
+    target_event = Event.query.get(targetid)
+
+    for group in source_event.groups:
+        cpgrp =Group(name=group.name, distance=group.distance, number_prefix=group.number_prefix,
+                  price_prepay=group.price_prepay, price=group.price, product_code=group.product_code, racenumberrange_start=group.racenumberrange_start,
+                  racenumberrange_end=group.racenumberrange_end, tagrange_start=group.tagrange_start,
+                  tagrange_end=group.tagrange_end,discount=group.discount)
+        target_event.groups.append(cpgrp)
+    db.session.commit()
+
+    response = make_response("Groups copied", 200)
+    return response
+@app.route("/api/events/v1/approvevoucher/<int:participantid>", methods=['GET'])
+@jwt_required
+def approvevoucher(participantid):
+    """Approve sport voucher, send confirmation email
+     Decorators:
+         app
+
+     Returns:
+        200 if updated ok
+    """
+
+    participant = Participant.query.get(participantid)
+    group = Group.query.get(participant.group_id)
+    event = Event.query.get(group.event_id)
+    # racenumbers only if payment is ok
+    racenumber = group.current_racenumber
+    racetagnumber = group.current_tag
+    participant.payment_confirmed = True
+    participant.number = racenumber
+    participant.tagnumber = racetagnumber
+    group.current_tag = group.current_tag + 1
+    group.current_racenumber = group.current_racenumber + 1
+    task = Task(target=participant.email,
+                param=event.email_template,  status=0, type=1)
+
+    task = Task(target=participant.email,
+                param=event.sport_voucher_confirmed_email + " " + event.name + " !",  status=0, type=3)
+    db.session.add(task)
+    db.session.commit()
+
+@app.route("/api/events/v1/sportvoucherpending/<int:eventid>", methods=['GET'])
+@jwt_required
+def pendingvouchers(eventid):
+    """Get participants with open sportvoucher payment
+     Decorators:
+         app
+
+     Returns:
+        200 if ok
+    """   
+    event = Event.query.get(eventid)
+    sport_voucher_participants = []
+    for group in event.groups:
+        for participant in group.participants:
+            if participant.payment_type == 2 and participant.payment_confirmed == False:
+              sport_voucher_participants.append({"id":participant.id,"firstname":participant.firstname,"surname":participant.lastname,"sport_voucher_name":participant.sport_voucher_name, "email":participant.email, "phone":participant.telephone})
+    data = json.dumps(sport_voucher_participants)
+
+    response = make_response(data)
+    response.headers['Content-Type'] = 'application/json'
+    return response
+   
 if __name__ == "__main__":
     app.run(host='0.0.0.0', threaded=True)
 
@@ -797,6 +884,9 @@ class Event(db.Model):
     googlemaps_link = db.Column(db.Text, nullable=True)
     paytrail_product = db.Column(db.String(11), nullable=True)
     email_template = db.Column(db.Text, nullable=True)
+    sport_voucher_email = db.Column(db.Text, nullable=True)
+    sport_voucher_confirmed_email = db.Column(db.Text, nullable=True)
+    event_active =db.Column(db.Boolean, nullable=True)
     groups = db.relationship('Group', backref='event',
                              cascade="all, delete, delete-orphan")
 
@@ -843,13 +933,12 @@ class Participant(db.Model):
     tagnumber = db.Column(db.String(255), nullable=True)
     number = db.Column(db.Integer, nullable=True)
     referencenumber = db.Column(db.Integer,  nullable=True)
-    sport_voucher = db.Column(db.Boolean, nullable=True)
-    sport_voucher_name = db.Column(db.Text, nullable=True)
     team = db.Column(db.Text, nullable=True)
     jyps_member = db.Column(db.Boolean, nullable=True)
     birth_year = db.Column(db.Integer, nullable=True)
     group_id = db.Column(db.Integer, db.ForeignKey(
         'event_group.id'), nullable=False)
+    sport_voucher_name = db.Column(db.String(255), nullable=True)
 
 
 class Settings(db.Model):
