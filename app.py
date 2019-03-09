@@ -829,7 +829,7 @@ def approvevoucher(participantid):
                 param=event.email_template,  status=0, type=1)
 
     task = Task(target=participant.email,
-                param=event.sport_voucher_confirmed_email + " " + event.name + " !",  status=0, type=3)
+                param=event.sport_voucher_confirmed_email,  status=0, type=3)
     db.session.add(task)
     db.session.commit()
     response = make_response("Groups copied", 200)
