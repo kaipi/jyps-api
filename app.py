@@ -125,7 +125,7 @@ def allevents():
     Returns:
         json -- json array of object(s) containing all events
     """
-    res = Event.query.all()
+    res = Event.query.filter(Event.close_date >  datetime.datetime.now())
     x = []
     for item in res:
         x.append({"id": item.id,
@@ -204,10 +204,9 @@ def oneevent(id):
         json -- json object of one event
     """
     event = Event.query.get(id)
-    active = False
-
-    if event.close_date > datetime.date.today():
-        active = True
+    event_active = True
+    #if event.close_date >  datetime.datetime.now():
+    #    event_active = False
     groups = []
     for group in event.groups:
         groups.append({"id": group.id, "name": group.name, "distance": simplejson.dumps(group.distance),
@@ -216,7 +215,7 @@ def oneevent(id):
                        "discount": simplejson.dumps(group.discount), "current_racenumber": group.current_racenumber, "current_tag": group.current_tag})
     response = ({"id": event.id, "location": event.location,
                  "general_description": event.general_description, "date": event.date, "payment_description": event.payment_description,
-                 "groups_description": event.groups_description, "name": event.name, "groups": groups, "email_template": event.email_template, "close_date": event.close_date, "open_date": event.open_date, "paytrail_product": event.paytrail_product, "googlemaps_link": event.googlemaps_link, "event_active": event.event_active,"sport_voucher_email":event.sport_voucher_email,"sport_voucher_confirmed_email":event.sport_voucher_confirmed_email})
+                 "groups_description": event.groups_description, "name": event.name, "groups": groups, "email_template": event.email_template, "close_date": event.close_date, "open_date": event.open_date, "paytrail_product": event.paytrail_product, "googlemaps_link": event.googlemaps_link, "event_active": event.event_active,"sport_voucher_email":event.sport_voucher_email,"sport_voucher_confirmed_email":event.sport_voucher_confirmed_email,"event_active":event_active})
     data = json.dumps(response,  default=dateconvert)
     r = make_response(data)
     r.headers['Content-Type'] = 'application/json'
