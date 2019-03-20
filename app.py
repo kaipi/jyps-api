@@ -357,6 +357,7 @@ def addparticipant():
     if participant.payment_type == 2:
        task = Task(target=participant.email, param=event.sport_voucher_email,
                 status=0, type=1)
+       return redirect("https://tapahtumat.jyps.fi/event/" + str(group.event_id) + "/eventinfo/?sport_voucher_received=true", code=302)
 
     task = Task(target=participant.email, param=event.email_template,
                 status=0, type=1)
