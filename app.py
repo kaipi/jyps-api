@@ -24,10 +24,10 @@ from localconfig import jwtkey, dbstring
 
 app = Flask(__name__)
 CORS(app)
+expire = datetime.timedelta(hours=24)
 app.config['SQLALCHEMY_DATABASE_URI'] = dbstring
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['JWT_EXPIRES	'] = datetime.timedelta(hours=24)
-
+app.config['JWT_EXPIRES'] = expire
 db = SQLAlchemy(app, session_options={"autoflush": False})
 migrate = Migrate(app, db, compare_type=True)
 # Setup the Flask-JWT-Simple extension
@@ -479,6 +479,30 @@ def eventparticipants_pos(id):
     except AttributeError:
         return make_response("No participants found", 503)
 
+@app.route("/api/events/v1/events/movegroup/<int:participant_id>/<int:new_group>", methods=['PATCH'])
+@jwt_required
+def moveparticipant_group(participant_id, new_group):
+    """Move participant to other group inside event
+
+    Decorators:
+        app
+
+    Returns:
+        http -- 200 OK
+    """
+    group = Group.query.get(new_group)
+    participant = Participant.query.get(participant_id)
+    racenumber = group.current_racenumber
+    racetagnumber = group.current_tag
+    group.current_tag = group.current_tag + 1
+    group.current_racenumber = group.current_racenumber + 1
+    participant.number = racenumber
+    participant.tagnumber = racetagnumber
+    participant.referencenumber = str(
+        participant.id) + str(group.id) + str(group.event_id)
+    participant.group_id = group.id
+    db.session.commit()
+    return make_response("Participant moved", 200)
 
 @app.route("/api/events/v1/paymentconfirm", methods=['GET'])
 def paymentconfirm():
