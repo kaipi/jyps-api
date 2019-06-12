@@ -881,7 +881,30 @@ def pendingvouchers(eventid):
     response = make_response(data)
     response.headers['Content-Type'] = 'application/json'
     return response
-   
+@app.route("/api/events/v1/recalculate/<int:groupid>", methods=['GET'])
+@jwt_required
+def recalculate_numbers(groupid):
+    """Recalculate numbers for event
+     Decorators:
+         app
+
+     Returns:
+        200 if ok
+    """   
+    group = Group.query.get(groupid)
+    group.current_racenumber = group.racenumberrange_start
+    group.current_tag = group.tagrange_start
+
+    for participant in group.participants:
+         participant.number = group.current_racenumber
+         participant.tagnumber = group.current_tag
+         group.current_tag = group.current_tag + 1
+         group.current_racenumber = group.current_racenumber + 1
+         db.session.commit()
+
+    response = make_response("Recalculated", 200)
+    return response
+    
 if __name__ == "__main__":
     app.run(host='0.0.0.0', threaded=True)
 
