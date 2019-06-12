@@ -125,7 +125,7 @@ def allevents():
     Returns:
         json -- json array of object(s) containing all events
     """
-    res = Event.query.filter(Event.close_date >  datetime.datetime.now())
+    res = Event.query.all()
     x = []
     for item in res:
         x.append({"id": item.id,
