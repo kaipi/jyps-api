@@ -2,5 +2,9 @@
   "workbench.colorCustomizations": {
     "titleBar.activeBackground": "#228B22" // change this color!
   },
-  "python.pythonPath": "venv/bin/python3.6"
+  "python.pythonPath": "venv/bin/python3.6",
+  "python.linting.enabled": true,
+  "editor.formatOnSave": true,
+  "python.formatting.provider": "black",
+  "editor."
 }
