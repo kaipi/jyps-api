@@ -51,6 +51,7 @@ pylint==1.8.1
 PyMySQL==0.8.0
 pytest==4.0.2
 python-dateutil==2.6.1
+python-dotenv==0.10.3
 python-editor==1.0.3
 PyYAML==3.12
 regex==2019.11.1
