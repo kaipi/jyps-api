@@ -1,11 +1,18 @@
-from flask import make_response
-from utils.helpers import dateconvert
-from models import Data, User, Event
+from flask import make_response, request, jsonify, Response, redirect
+from ..utils.helpers import dateconvert
+from .models import *
 import json
+import bcrypt
+import requests
+import simplejson
+from flask_jwt_simple import JWTManager, jwt_required, create_jwt, get_jwt_identity
+from flask import current_app as app
+from decimal import Decimal
+import hashlib
+from ..utils.helpers import password_generator, require_appkey, getSetting
+from requests.auth import HTTPBasicAuth
 
-
-
-@app.route("/api/events/v1/login", methods=["POST"])
+@app.route("/v1/login", methods=["POST"])
 def login():
     if not request.is_json:
         return jsonify({"msg": "Missing JSON in request"}), 400
@@ -26,7 +33,7 @@ def login():
         return jsonify({"msg": "Bad username or password"}), 401
 
 
-@app.route("/api/events/v1/event/allevents", methods=["GET"])
+@app.route("/v1/event/", methods=["GET"])
 def allevents():
     """Get all event data
 
@@ -56,9 +63,9 @@ def allevents():
     return response
 
 
-@app.route("/api/events/v1/event/update/<int:id>", methods=["POST"])
+@app.route("/api/events/v1/event/<int:id>", methods=["PUT"])
 @jwt_required
-def updateevent(id):
+def updateevent(id):  
     """Update event data
 
     Decorators:
@@ -104,6 +111,7 @@ def updateevent(id):
         group.discount = z["discount"]
         i = i + 1
     db.session.commit()
+    
     response = make_response("Event updated", 200)
     return response
 
@@ -166,7 +174,7 @@ def oneevent(id):
     return r
 
 
-@app.route("/api/events/v1/createevent", methods=["POST"])
+@app.route("/api/events/v1/event", methods=["POST"])
 @jwt_required
 def createevent():
     """Create new event
@@ -216,7 +224,7 @@ def createevent():
     return response
 
 
-@app.route("/api/events/v1/deleteevent/<int:id>", methods=["DELETE"])
+@app.route("/api/events/v1/event/<int:id>", methods=["DELETE"])
 @jwt_required
 def deleteevent(id):
     """Delete event
@@ -234,7 +242,7 @@ def deleteevent(id):
     return response
 
 
-@app.route("/api/events/v1/addparticipant", methods=["POST"])
+@app.route("/api/events/v1/participant/", methods=["POST"])
 @require_appkey
 def addparticipant():
     """Add participant
@@ -351,7 +359,7 @@ def addparticipant():
     return response
 
 
-@app.route("/api/events/v1/addparticipant_pos", methods=["POST"])
+@app.route("/api/events/v1/pos/participant/", methods=["POST"])
 @jwt_required
 def addparticipant_pos():
     """Add participant from POS
@@ -410,7 +418,7 @@ def addparticipant_pos():
     return response
 
 
-@app.route("/api/events/v1/deleteparticipant/<int:id>", methods=["DELETE"])
+@app.route("/api/events/v1/participant/<int:id>", methods=["DELETE"])
 @jwt_required
 def deleteparticipant(id):
     """Delete participant
@@ -622,83 +630,7 @@ def paymentcancel():
     )
 
 
-@app.route("/api/events/v1/settings", methods=["GET"])
-@jwt_required
-def allsettings():
-    """Get all settings
 
-    Decorators:
-        app
-
-    Returns:
-        json -- json array of object(s) containing all events
-    """
-    res = Settings.query.all()
-    x = []
-    for item in res:
-        x.append({"id": item.id, "key": item.setting_key, "value": item.setting_value})
-    data = json.dumps([dict(y) for y in x], default=dateconvert)
-    response = make_response(data)
-    response.headers["Content-Type"] = "application/json"
-    return response
-
-
-@app.route("/api/events/v1/settings/add", methods=["POST"])
-@jwt_required
-def addsettings():
-    """Add setting
-
-    Decorators:
-        app
-
-    Returns:
-        String -- Return code
-    """
-    request_data = request.json
-    settings = Settings(
-        setting_key=request_data["key"], setting_value=request_data["value"]
-    )
-    db.session.add(settings)
-    db.session.commit()
-    response = make_response("Setting added", 200)
-    return response
-
-
-@app.route("/api/events/v1/settings/delete/<int:id>", methods=["DELETE"])
-@jwt_required
-def deletesettings(id):
-    """Delete setting
-
-    Decorators:
-        app
-
-    Returns:
-        String -- Return code
-    """
-    setting = Settings.query.get(id)
-    db.session.delete(setting)
-    db.session.commit()
-    response = make_response("Setting added", 200)
-    return response
-
-
-@app.route("/api/events/v1/settings/update", methods=["POST"])
-@jwt_required
-def updatesettings():
-    """update setting
-
-    Decorators:
-        app
-
-    Returns:
-        String -- Return code
-    """
-    request_data = request.json
-    setting = Settings.query.get(request_data["id"])
-    setting.value = request_data["value"]
-    db.session.commit()
-    response = make_response("Setting updated", 200)
-    return response
 
 
 @app.route("/api/events/v1/users/allusers", methods=["GET"])
