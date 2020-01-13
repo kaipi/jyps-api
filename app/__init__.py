@@ -8,6 +8,7 @@ import logging
 import logging.handlers
 from flask import Flask, redirect, render_template, jsonify
 from .extensions import db, cors, jwt
+from flask_migrate import Migrate
 
 
 def create_app():
@@ -35,11 +36,15 @@ def create_app():
     cors.init_app(app)
     db.init_app(app)
     jwt.init_app(app)
+    migrate = Migrate(app, db)
+
     with app.app_context():
 
         from .event.routes import events_api_blueprint
+        from .settings.routes import settings_api_blueprint
 
         app.register_blueprint(events_api_blueprint)
+        app.register_blueprint(settings_api_blueprint)
         db.create_all()
 
         @app.route("/")

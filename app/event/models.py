@@ -32,6 +32,8 @@ class Event(db.Model):
     sport_voucher_email = db.Column(db.Text, nullable=True)
     sport_voucher_confirmed_email = db.Column(db.Text, nullable=True)
     event_active = db.Column(db.Boolean, nullable=True)
+    discount_steps = db.relationship("DiscountStep", backref="event",
+                                     cascade="all, delete, delete-orphan")
     groups = db.relationship(
         "Group", backref="event", cascade="all, delete, delete-orphan"
     )
@@ -89,15 +91,6 @@ class Participant(db.Model):
     sport_voucher_name = db.Column(db.String(255), nullable=True)
 
 
-class Settings(db.Model):
-    """ORM object for settings data
-    """
-
-    id = db.Column(db.Integer, primary_key=True)
-    setting_key = db.Column(db.String(255), nullable=True)
-    setting_value = db.Column(db.String(255), nullable=True)
-
-
 class User(db.Model):
     """ORM object for user data
     """
@@ -120,3 +113,14 @@ class Task(db.Model):
     param = db.Column(db.String(255), nullable=True)
     created = db.Column(db.DateTime, nullable=True, default=datetime.now)
     handled = db.Column(db.DateTime, nullable=True)
+
+
+class DiscountStep(db.Model):
+    """ORM object for discount data
+    """
+
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey("event.id"), nullable=False)
+    discount_amount = db.Column(db.Numeric, nullable=True)
+    valid_from = db.Column(db.DateTime, nullable=True, default=datetime.now)
+    valid_to = db.Column(db.DateTime, nullable=True, default=datetime.now)

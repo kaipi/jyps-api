@@ -150,6 +150,7 @@ def oneevent(id):
                 "current_tag": group.current_tag,
             }
         )
+    
     response = {
         "id": event.id,
         "location": event.location,
@@ -167,6 +168,7 @@ def oneevent(id):
         "sport_voucher_email": event.sport_voucher_email,
         "sport_voucher_confirmed_email": event.sport_voucher_confirmed_email,
         "event_active": event_active,
+        "discount_steps": event.discount_steps
     }
     data = json.dumps(response, default=dateconvert)
     r = make_response(data)
@@ -280,7 +282,7 @@ def addparticipant():
     group = Group.query.get(participant.group_id)
     event = Event.query.get(group.event_id)
     price = group.price_prepay
-    if request_data["jyps_member"] == True:
+    if request_data["jyps_member"]:
         price = group.price_prepay - group.discount
     # set reference
     participant.referencenumber = str(participant.id) + str(group.id) + str(event.id)
@@ -977,3 +979,47 @@ def recalculate_numbers(groupid):
 
     response = make_response("Recalculated", 200)
     return response
+
+
+@app.route("/api/events/v1/event/<int:eventid>/discount", methods=["GET"])
+@jwt_required
+def getDiscounts(eventid):
+    """Get events discounts
+
+    Arguments:
+        eventid {integer} -- Id of event 
+    """ 
+    discounts = Event.query.get(eventid).all()
+
+    response = make_response(discounts)
+    response.headers["Content-Type"] = "application/json"
+
+    return response
+
+@app.route("/api/events/v1/event/<int:eventid>/discount", methods=["POST"])
+@jwt_required
+def addDiscount():
+    """Add new discount for event
+    """
+    request_data = request.json
+    discount_step = DiscountStep(discount_amount=request_data["amount"],
+                                 valid_to=request_data["validto"],
+                                 valid_from=request_data["validfrom"])
+    db.session.add(discount_step)
+    db.session.commit()
+
+    return make_response("Discount added", 200)
+
+@app.route("/api/events/v1/event/<int:eventid>/discount/<int:discountid>", methods=["DELETE"])
+@jwt_required
+def removeDiscount(discountid):
+    """Remove one discount
+
+    Arguments:
+        discountid {Integer} -- Id of discount record
+    """
+    discount = DiscountStep.query.get(discountid).first()
+    db.session.delete(discount)
+    db.session.commit()
+
+    return make_response("Discount removed",200)

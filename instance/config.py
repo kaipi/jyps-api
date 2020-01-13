@@ -5,7 +5,7 @@ BASE_DIR = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 
 DEBUG = True
 Testing = True
-JWT_SECRET_KEY = os.urandom(32)  # same key will be used for csrf protection
+JWT_SECRET_KEY = "123123123"  # same key will be used for csrf protection
 
 
 # database
