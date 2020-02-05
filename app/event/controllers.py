@@ -1,16 +1,21 @@
-from flask import make_response, request, jsonify, Response, redirect
-from ..utils.helpers import dateconvert
-from .models import *
+import hashlib
 import json
+from decimal import Decimal
+
 import bcrypt
 import requests
 import simplejson
-from flask_jwt_simple import JWTManager, jwt_required, create_jwt, get_jwt_identity
+from flask import Response
 from flask import current_app as app
-from decimal import Decimal
-import hashlib
-from ..utils.helpers import password_generator, require_appkey, getSetting
+from flask import jsonify, make_response, redirect, request
+from flask_jwt_simple import (JWTManager, create_jwt, get_jwt_identity,
+                              jwt_required)
 from requests.auth import HTTPBasicAuth
+
+from ..utils.helpers import (dateconvert, getSetting, getValidDiscount,
+                             password_generator, require_appkey)
+from .models import *
+
 
 @app.route("/v1/login", methods=["POST"])
 def login():
@@ -128,16 +133,31 @@ def oneevent(id):
     """
     event = Event.query.get(id)
     event_active = True
-    # if event.close_date >  datetime.datetime.now():
-    #    event_active = False
+    close_datetime = datetime.combine(event.close_date, datetime.min.time())
+
+    if close_datetime < datetime.now():
+        event_active = False
     groups = []
+    discounts = []
+    discount_amt = 0
+    discount = DiscountStep.query.filter(DiscountStep.event_id == id, DiscountStep.valid_from <= datetime.now(),DiscountStep.valid_to >= datetime.now()).first()
+    if discount != None:
+        discount_amt = discount.discount_amount
+    event_discount = DiscountStep.query.filter(DiscountStep.event_id == id).all()
+
+    for disc in event_discount:
+        discounts.append({
+            "discount_amount": simplejson.dumps(disc.discount_amount),
+            "valid_from": disc.valid_from,
+            "valid_to": disc.valid_to
+        })
     for group in event.groups:
         groups.append(
             {
                 "id": group.id,
                 "name": group.name,
                 "distance": simplejson.dumps(group.distance),
-                "price_prepay": simplejson.dumps(group.price_prepay),
+                "price_prepay": simplejson.dumps(group.price_prepay - discount_amt),
                 "price": simplejson.dumps(group.price),
                 "product_code": group.product_code,
                 "number_prefix": group.number_prefix,
@@ -168,7 +188,7 @@ def oneevent(id):
         "sport_voucher_email": event.sport_voucher_email,
         "sport_voucher_confirmed_email": event.sport_voucher_confirmed_email,
         "event_active": event_active,
-        "discount_steps": event.discount_steps
+        "discount_steps": discounts
     }
     data = json.dumps(response, default=dateconvert)
     r = make_response(data)
@@ -257,7 +277,9 @@ def addparticipant():
     """
     request_data = request.json
     group = Group.query.get(request_data["groupid"])
-    db.session.commit()
+    event = Event.query.get(group.event_id)
+    if event.valid_from < datetime.now() or datetime.now() > event.valid_to or event.active == False:
+        return make_response(400,"Event is closed or not active")
     participant = Participant(
         firstname=request_data["firstname"],
         lastname=request_data["lastname"],
@@ -280,7 +302,6 @@ def addparticipant():
     db.session.commit()
     db.session.flush()
     group = Group.query.get(participant.group_id)
-    event = Event.query.get(group.event_id)
     price = group.price_prepay
     if request_data["jyps_member"]:
         price = group.price_prepay - group.discount
@@ -998,13 +1019,14 @@ def getDiscounts(eventid):
 
 @app.route("/api/events/v1/event/<int:eventid>/discount", methods=["POST"])
 @jwt_required
-def addDiscount():
+def addDiscount(eventid):
     """Add new discount for event
     """
     request_data = request.json
-    discount_step = DiscountStep(discount_amount=request_data["amount"],
-                                 valid_to=request_data["validto"],
-                                 valid_from=request_data["validfrom"])
+    discount_step = DiscountStep(discount_amount=request_data["discount_amount"],
+                                 valid_to=request_data["valid_to"],
+                                 valid_from=request_data["valid_from"],
+                                 event_id=eventid)
     db.session.add(discount_step)
     db.session.commit()
 

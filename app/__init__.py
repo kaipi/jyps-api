@@ -42,9 +42,11 @@ def create_app():
 
         from .event.routes import events_api_blueprint
         from .settings.routes import settings_api_blueprint
+        from .event.commands import events_commands_blueprint
 
         app.register_blueprint(events_api_blueprint)
         app.register_blueprint(settings_api_blueprint)
+        app.register_blueprint(events_commands_blueprint)
         db.create_all()
 
         @app.route("/")

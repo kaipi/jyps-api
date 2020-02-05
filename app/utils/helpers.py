@@ -1,13 +1,22 @@
+"""Helper functions
+"""
 import datetime
-import string
 import random
+import string
 from functools import wraps
-from flask import request, abort
+
+from flask import abort, request
 
 
 def password_generator(size=8, chars=string.ascii_letters + string.digits):
-    """
-    Returns a string of random characters
+    """Returns random string for resetted pasword
+    
+    Keyword Arguments:
+        size {int} -- Length of password (default: {8})
+        chars {[type]} -- What to use (default: {string.ascii_letters+string.digits})
+    
+    Returns:
+        string -- Random string
     """
     return "".join(random.choice(chars) for i in range(size))
 
@@ -26,6 +35,15 @@ def dateconvert(o):
 
 
 def require_appkey(view_function):
+    """Decorator to require apikey
+    
+    Arguments:
+        view_function {Function} -- Function to decorate
+    
+    Returns:
+        Function -- Decorated function
+    """
+
     @wraps(view_function)
     # the new, post-decoration function. Note *args and **kwargs here.
     def decorated_function(*args, **kwargs):
@@ -36,7 +54,20 @@ def require_appkey(view_function):
 
     return decorated_function
 
+
 def getSetting(key):
-    #setting = Settings.query.filter_by(setting_key=key).first()
-    #return setting.setting_value
-    return "Test"
+    """Gets settings
+    
+    Arguments:
+        key {[type]} -- [description]
+    
+    Returns:
+        [type] -- [description]
+    """
+    setting = Settings.query.filter_by(setting_key=key).first()
+    return setting.setting_value
+
+
+def getValidDiscount():
+    """Get valid discount for time
+    """
