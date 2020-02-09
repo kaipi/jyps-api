@@ -2,14 +2,15 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_script import Manager
 from flask_migrate import Migrate, MigrateCommand
-from app.event.models import *
-from app.settings.models import *
 
 
 app = Flask(__name__)
 app.config.from_pyfile("./instance/config.py")
 
 db = SQLAlchemy(app)
+from app.event.models import *
+from app.settings.models import *
+
 migrate = Migrate(app, db)
 
 manager = Manager(app)
