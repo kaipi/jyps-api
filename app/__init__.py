@@ -36,7 +36,7 @@ def create_app():
     cors.init_app(app)
     db.init_app(app)
     jwt.init_app(app)
-    migrate = Migrate(app, db)
+    #Migrate.init_app(app)
 
     with app.app_context():
 
