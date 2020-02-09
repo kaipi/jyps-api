@@ -149,7 +149,8 @@ def oneevent(id):
         discounts.append({
             "discount_amount": simplejson.dumps(disc.discount_amount),
             "valid_from": disc.valid_from,
-            "valid_to": disc.valid_to
+            "valid_to": disc.valid_to,
+            "id": disc.id
         })
     for group in event.groups:
         groups.append(
@@ -157,7 +158,7 @@ def oneevent(id):
                 "id": group.id,
                 "name": group.name,
                 "distance": simplejson.dumps(group.distance),
-                "price_prepay": simplejson.dumps(group.price_prepay - discount_amt),
+                "price_prepay": simplejson.dumps(group.price_prepay),
                 "price": simplejson.dumps(group.price),
                 "product_code": group.product_code,
                 "number_prefix": group.number_prefix,
@@ -168,6 +169,7 @@ def oneevent(id):
                 "discount": simplejson.dumps(group.discount),
                 "current_racenumber": group.current_racenumber,
                 "current_tag": group.current_tag,
+                "discount_amount": simplejson.dumps(discount_amt)
             }
         )
     
@@ -264,7 +266,7 @@ def deleteevent(id):
     return response
 
 
-@app.route("/api/events/v1/participant/", methods=["POST"])
+@app.route("/api/events/v1/participant", methods=["POST"])
 @require_appkey
 def addparticipant():
     """Add participant
@@ -278,8 +280,16 @@ def addparticipant():
     request_data = request.json
     group = Group.query.get(request_data["groupid"])
     event = Event.query.get(group.event_id)
-    if event.valid_from < datetime.now() or datetime.now() > event.valid_to or event.active == False:
-        return make_response(400,"Event is closed or not active")
+    close_datetime = datetime.combine(event.close_date, datetime.min.time())
+    open_datetime = datetime.combine(event.open_date, datetime.min.time())
+    if open_datetime < datetime.now() or datetime.now() > close_datetime or event.event_active == False:
+       return make_response(400,"Event is closed or not active")
+    discount_amt = 0
+    discount = None
+    discount = DiscountStep.query.filter(DiscountStep.event_id == event.id, DiscountStep.valid_from <= datetime.now(),DiscountStep.valid_to >= datetime.now()).first()
+     
+    if discount != None:
+        discount_amt = discount.discount_amount
     participant = Participant(
         firstname=request_data["firstname"],
         lastname=request_data["lastname"],
@@ -302,9 +312,9 @@ def addparticipant():
     db.session.commit()
     db.session.flush()
     group = Group.query.get(participant.group_id)
-    price = group.price_prepay
+    price = group.price_prepay - discount_amt
     if request_data["jyps_member"]:
-        price = group.price_prepay - group.discount
+        price = group.price_prepay - group.discount - discount_amt
     # set reference
     participant.referencenumber = str(participant.id) + str(group.id) + str(event.id)
     db.session.commit()
@@ -382,7 +392,7 @@ def addparticipant():
     return response
 
 
-@app.route("/api/events/v1/pos/participant/", methods=["POST"])
+@app.route("/api/events/v1/pos/participant", methods=["POST"])
 @jwt_required
 def addparticipant_pos():
     """Add participant from POS
@@ -1034,13 +1044,13 @@ def addDiscount(eventid):
 
 @app.route("/api/events/v1/event/<int:eventid>/discount/<int:discountid>", methods=["DELETE"])
 @jwt_required
-def removeDiscount(discountid):
+def removeDiscount(discountid,eventid):
     """Remove one discount
 
     Arguments:
         discountid {Integer} -- Id of discount record
     """
-    discount = DiscountStep.query.get(discountid).first()
+    discount = DiscountStep.query.get(discountid)
     db.session.delete(discount)
     db.session.commit()
 

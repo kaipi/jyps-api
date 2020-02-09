@@ -6,6 +6,7 @@ import string
 from functools import wraps
 
 from flask import abort, request
+from ..settings.models import Settings
 
 
 def password_generator(size=8, chars=string.ascii_letters + string.digits):

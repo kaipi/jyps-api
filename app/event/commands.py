@@ -1,16 +1,17 @@
 import os
 from glob import glob
 from subprocess import call
-from flask import Blueprint
 
 import click
-from flask import current_app, Flask
-from flask.cli import with_appcontext
-from ..utils.task_handler import task_runner
+from flask import Blueprint, Flask
 from flask import current_app as app
+from flask.cli import with_appcontext
+
+from ..utils.task_handler import task_runner
 
 app = Flask(__name__)
-events_commands_blueprint = Blueprint("events_commands", "events_commands")
+
+events_commands_blueprint = Blueprint("events_commands", __name__)
 
 
 @app.cli.command("taskrunner")
