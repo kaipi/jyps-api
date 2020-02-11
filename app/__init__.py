@@ -6,9 +6,11 @@ App init module
 """
 import logging
 import logging.handlers
-from flask import Flask, redirect, render_template, jsonify
-from .extensions import db, cors, jwt
+
+from flask import Flask, jsonify, redirect, render_template
 from flask_migrate import Migrate
+
+from .extensions import cors, db, jwt
 
 
 def create_app():
@@ -30,13 +32,12 @@ def create_app():
             "%Y-%m-%d %H:%M:%S",
         )
     )
-    # app.logger.addHandler(handler)
+    logging.getLogger("flask_cors").level = logging.DEBUG
 
     # init flask-extensions
     cors.init_app(app)
     db.init_app(app)
     jwt.init_app(app)
-    #Migrate.init_app(app)
 
     with app.app_context():
 
@@ -55,4 +56,3 @@ def create_app():
             return redirect("/admin/home")
 
     return app
-
