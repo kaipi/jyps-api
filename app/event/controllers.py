@@ -377,10 +377,12 @@ def addparticipant():
         task = Task(
             target=participant.email, param=event.sport_voucher_email, status=0, type=1
         )
-        response = make_response(json.dumps({"msg":"sportvoucher_used"}),200)
-        return response;
-    task = Task(target=participant.email, param=event.email_template, status=0, type=1)
+        #db.session.add(task)
+        #db.session.commit()
+        #response = make_response(json.dumps({"msg":"sportvoucher_used", "type":"sportvoucher"}),200)
+        #return response;
 
+    task = Task(target=participant.email, param=event.email_template, status=0, type=1)
     db.session.add(task)
     db.session.commit()
     response = make_response(json.dumps({"msg": "Added ok", "type": "normal"}), 200)

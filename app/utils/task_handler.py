@@ -11,11 +11,8 @@ app = Flask(__name__)
 def task_runner():
     # mainlooop for taskhandler
     tasks = Task.query.filter_by(status=0).all()
-
     for task in tasks:
-        if task.type == 1:
-            email.handleEmail(task, db)
-        if task.type == 2:
+        if task.type == 1 or task.type == 2:
             email.handleEmail(task, db)
 
-        db.session.flush()
+    return

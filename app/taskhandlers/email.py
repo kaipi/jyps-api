@@ -15,8 +15,9 @@ def handleEmail(task, db):
             recipients=[task.target],
             body=task.param,
         )
-        mail.send(msg)
-        task.status = 2
-        task.handled = datetime.datetime.now()
+        print(msg)
+        # mail.send(msg)
+        # task.status = 2
+        # task.handled = datetime.datetime.now()
         db.session.commit()
         return
