@@ -280,10 +280,10 @@ def addparticipant():
     request_data = request.json
     group = Group.query.get(request_data["groupid"])
     event = Event.query.get(group.event_id)
-    close_datetime = datetime.combine(event.close_date, datetime.min.time())
-    open_datetime = datetime.combine(event.open_date, datetime.min.time())
-    if open_datetime < datetime.now() or datetime.now() > close_datetime or event.event_active == False:
-       return make_response(400,"Event is closed or not active")
+    #close_datetime = datetime.combine(event.close_date, datetime.min.time())
+    #open_datetime = datetime.combine(event.open_date, datetime.min.time())
+    ##if open_datetime < datetime.now() or datetime.now() > close_datetime or event.event_active == False:
+    ##    return make_response(400,"Event is closed or not active")
     discount_amt = 0
     discount = None
     discount = DiscountStep.query.filter(DiscountStep.event_id == event.id, DiscountStep.valid_from <= datetime.now(),DiscountStep.valid_to >= datetime.now()).first()
