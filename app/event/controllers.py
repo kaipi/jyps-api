@@ -194,7 +194,7 @@ def oneevent(id):
     }
     data = json.dumps(response, default=dateconvert)
     r = make_response(data)
-    r.headers["Content-Type"] = "application/json"
+    #r.headers["Content-Type"] = "application/json"
     return r
 
 
@@ -369,7 +369,7 @@ def addparticipant():
             json=paytrail_json,
         )
         response = make_response(json.dumps(paytrail_response.json()), 200)
-        response.headers["Content-Type"] = "application/json"
+        #response.headers["Content-Type"] = "application/json"
         db.session.commit()
         return response
     # payment is sport voucher
@@ -498,7 +498,7 @@ def eventparticipants(id):
             participants.append(onegroup)
         data = json.dumps(participants, default=dateconvert)
         r = make_response(data)
-        r.headers["Content-Type"] = "application/json"
+        #r.headers["Content-Type"] = "application/json"
         return r
     except AttributeError:
         return make_response("No participants found", 503)
@@ -980,7 +980,7 @@ def pendingvouchers(eventid):
     data = json.dumps(sport_voucher_participants)
 
     response = make_response(data)
-    response.headers["Content-Type"] = "application/json"
+    #response.headers["Content-Type"] = "application/json"
     return response
 
 
@@ -1020,7 +1020,7 @@ def getDiscounts(eventid):
     discounts = Event.query.get(eventid).all()
 
     response = make_response(discounts)
-    response.headers["Content-Type"] = "application/json"
+    #response.headers["Content-Type"] = "application/json"
 
     return response
 

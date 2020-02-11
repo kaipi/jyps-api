@@ -49,10 +49,4 @@ def create_app():
         app.register_blueprint(settings_api_blueprint)
         app.register_blueprint(events_commands_blueprint)
         db.create_all()
-
-        @app.route("/")
-        def home():
-            """Handle root resource request"""
-            return redirect("/admin/home")
-
     return app
