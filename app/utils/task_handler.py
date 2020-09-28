@@ -14,5 +14,5 @@ def task_runner():
     for task in tasks:
         if task.type == 1 or task.type == 2:
             email.handleEmail(task, db)
-
     return
+

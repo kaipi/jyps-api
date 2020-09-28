@@ -32,8 +32,9 @@ class Event(db.Model):
     sport_voucher_email = db.Column(db.Text, nullable=True)
     sport_voucher_confirmed_email = db.Column(db.Text, nullable=True)
     event_active = db.Column(db.Boolean, nullable=True)
-    discount_steps = db.relationship("DiscountStep", backref="event",
-                                     cascade="all, delete, delete-orphan")
+    discount_steps = db.relationship(
+        "DiscountStep", backref="event", cascade="all, delete, delete-orphan"
+    )
     groups = db.relationship(
         "Group", backref="event", cascade="all, delete, delete-orphan"
     )

@@ -1,5 +1,4 @@
 import datetime
-
 from flask import Flask
 from flask_mail import Mail, Message
 
@@ -15,9 +14,8 @@ def handleEmail(task, db):
             recipients=[task.target],
             body=task.param,
         )
-        print(msg)
-        # mail.send(msg)
-        # task.status = 2
-        # task.handled = datetime.datetime.now()
+        mail.send(msg)
+        task.status = 2
+        task.handled = datetime.datetime.now()
         db.session.commit()
         return
